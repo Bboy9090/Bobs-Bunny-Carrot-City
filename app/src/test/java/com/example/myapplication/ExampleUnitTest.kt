@@ -227,5 +227,54 @@ class ExampleUnitTest {
         assertTrue("Defeating Don Foxone should award bonus carrots", engine.collectedCarrots >= 75)
         assertTrue("Defeating Don Foxone should award Golden Shards", engine.collectedGoldenShards >= 2)
     }
+
+    @Test
+    fun checkpointSpringRescue_restoresBobToLastSafePlatform() {
+        val stage = GameCatalog.stages.first { it.code == "W1-1" }
+        val engine = CartoonStageEngine(
+            stageConfig = stage,
+            selectedHero = PlayableHero.BOBS_BUNNY,
+            equippedBadgeId = "badge_coyote_plus",
+            trailColor = Color.White,
+            soundEngine = sound
+        )
+        engine.lastSafeX = 480f
+        engine.lastSafeY = 440f
+        engine.playerX = 900f
+        engine.playerY = 900f
+        engine.isGrounded = false
+        engine.stepFrame(0.02f)
+
+        assertEquals(CartoonHealthState.SCUFFED, engine.healthState)
+        assertEquals(480f, engine.playerX, 0.1f)
+        assertTrue(engine.playerY <= 420f)
+        assertTrue(engine.invulnerableTimer > 0f)
+    }
+
+    @Test
+    fun carrotCollectionAndEnemyStomp_updateStashAndSwag() {
+        val stage = GameCatalog.stages.first { it.code == "W1-1" }
+        val engine = CartoonStageEngine(
+            stageConfig = stage,
+            selectedHero = PlayableHero.BOBS_BUNNY,
+            equippedBadgeId = "badge_coyote_plus",
+            trailColor = Color.White,
+            soundEngine = sound
+        )
+        val firstCarrot = engine.stageData.carrots.first { !it.isGoldenShard }
+        engine.playerX = firstCarrot.x
+        engine.playerY = firstCarrot.y + 36f
+        engine.stepFrame(0.02f)
+        assertTrue("Carrot should be collected", firstCarrot.collected)
+        assertTrue("Collected carrots should increment", engine.collectedCarrots >= 1)
+
+        val minion = engine.stageData.enemies.first { !it.kind.isBoss }
+        engine.playerX = minion.x
+        engine.playerY = minion.y - 25f
+        engine.isGrounded = false
+        engine.playerVy = 220f
+        engine.stepFrame(0.02f)
+        assertTrue("Stomping minion should flatten it into accordion", minion.isFlattenedAccordion)
+    }
 }
 
