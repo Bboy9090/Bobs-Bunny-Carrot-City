@@ -268,6 +268,8 @@ private fun getNodeY(stageId: Int, midY: Float): Float {
 
 /** Draws the 11-region atmospheric terrain gradients across the 2600px canvas */
 private fun DrawScope.drawOverworldTerrainBands(mapW: Float, mapH: Float) {
+    if (mapW <= 1f || mapH <= 1f) return
+
     // Sky with stars and comic clouds
     drawRect(
         brush = Brush.verticalGradient(
@@ -277,9 +279,10 @@ private fun DrawScope.drawOverworldTerrainBands(mapW: Float, mapH: Float) {
     )
 
     // Twinkling cartoon map stars
+    val starBandHeight = (mapH * 0.35f).toInt().coerceAtLeast(1)
     for (i in 0..60) {
         val sx = (i * 44f) % mapW
-        val sy = 20f + (i * 29) % (mapH * 0.35f).toInt()
+        val sy = 20f + (i * 29) % starBandHeight
         drawCircle(color = Color(0x88FFFFFF), radius = 2f, center = Offset(sx, sy))
     }
 
