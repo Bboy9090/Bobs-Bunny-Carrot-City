@@ -128,5 +128,104 @@ class ExampleUnitTest {
         assertTrue(engine.squashStretchX < 1.35f)
         assertTrue(engine.squashStretchY > 0.65f)
     }
+
+    @Test
+    fun canonicalBobDesign_hasGoldenCreamFurAndApprovedDefaultSwag() {
+        val bob = PlayableHero.BOBS_BUNNY
+        assertEquals(Color(0xFFF4D58D), bob.bodyColor)
+        assertEquals(Color(0xFFFFD600), bob.earOrHelmetColor)
+        assertEquals(Color(0xFFFF6D00), bob.accentColor)
+
+        val defaultHead = GameCatalog.swagItems.first { it.id == "head_classic_shades" }
+        val defaultOuterwear = GameCatalog.swagItems.first { it.id == "hoodie_orange_drip" }
+        val defaultKicks = GameCatalog.swagItems.first { it.id == "kicks_high_tops" }
+        assertTrue(defaultHead.name.contains("Aviator Cap"))
+        assertEquals(Color(0xFFFFD600), defaultHead.secondaryColor)
+        assertEquals(Color(0xFFFF6D00), defaultOuterwear.primaryColor)
+        assertEquals(Color(0xFFFFFBF2), defaultOuterwear.secondaryColor)
+        assertEquals(Color(0xFFFFFFFF), defaultKicks.primaryColor)
+        assertEquals(Color(0xFFFFD600), defaultKicks.secondaryColor)
+    }
+
+    @Test
+    fun allTwentyStages_buildValidPlatformsCarrotsAndEnemies() {
+        for (stage in GameCatalog.stages) {
+            val engine = CartoonStageEngine(
+                stageConfig = stage,
+                selectedHero = PlayableHero.BOBS_BUNNY,
+                equippedBadgeId = "badge_coyote_plus",
+                trailColor = Color.White,
+                soundEngine = sound
+            )
+            assertTrue("Stage ${stage.code} should have platforms", engine.stageData.platforms.isNotEmpty())
+            assertTrue("Stage ${stage.code} should have carrots", engine.stageData.carrots.isNotEmpty())
+            assertTrue("Stage ${stage.code} should have enemies", engine.stageData.enemies.isNotEmpty())
+            assertTrue("Stage ${stage.code} goalX should be positive", engine.stageData.goalX > 500f)
+        }
+    }
+
+    @Test
+    fun coreMovement_runJumpHelicopterGlideAndBurrowWork() {
+        val stage = GameCatalog.stages.first { it.code == "W1-1" }
+        val engine = CartoonStageEngine(
+            stageConfig = stage,
+            selectedHero = PlayableHero.BOBS_BUNNY,
+            equippedBadgeId = "badge_coyote_plus",
+            trailColor = Color.White,
+            soundEngine = sound
+        )
+        val startX = engine.playerX
+        engine.inputRight = true
+        repeat(15) { engine.stepFrame(0.03f) }
+        assertTrue("Bob should move right", engine.playerX > startX)
+        assertTrue("Bob should face right", engine.facingRight)
+
+        engine.triggerJump()
+        engine.inputJumpHeld = true
+        assertFalse("Bob should be airborne after jump", engine.isGrounded)
+        assertTrue("Bob should have upward velocity", engine.playerVy < 0f)
+
+        // Advance until descending with jump held -> Helicopter Ears glide
+        repeat(40) { engine.stepFrame(0.03f) }
+        assertTrue("Bob should activate Helicopter Ears glide when holding jump while falling", engine.isHelicopterGliding)
+
+        // Stop horizontal movement, land back, and test Burrow Blitz
+        engine.inputRight = false
+        engine.inputJumpHeld = false
+        repeat(80) { engine.stepFrame(0.03f) }
+        assertTrue("Bob should be grounded after landing", engine.isGrounded)
+        engine.inputBurrowHeld = true
+        engine.stepFrame(0.03f)
+        assertTrue("Bob should burrow when grounded and holding burrow", engine.isBurrowing)
+    }
+
+    @Test
+    fun donFoxoneBoss_threePhaseShowdownAndDefeatClearsStage() {
+        val bossStage = GameCatalog.stages.first { it.code == "W1-BOSS" }
+        val engine = CartoonStageEngine(
+            stageConfig = bossStage,
+            selectedHero = PlayableHero.BOBS_BUNNY,
+            equippedBadgeId = "badge_coyote_plus",
+            trailColor = Color.White,
+            soundEngine = sound
+        )
+        val boss = engine.stageData.enemies.first { it.kind == EnemyKind.DON_FOXONE_BOSS }
+        assertEquals(3, boss.bossMaxHp)
+        assertEquals(3, boss.bossHp)
+
+        // Simulate 3 stomps / burrow flips across 3 phases (clearing bossStunTimer between hits)
+        for (expectedHp in listOf(2, 1, 0)) {
+            boss.bossStunTimer = 0f
+            engine.playerX = boss.x
+            engine.playerY = boss.y - 30f
+            engine.isGrounded = false
+            engine.playerVy = 250f
+            engine.stepFrame(0.02f)
+            assertEquals(expectedHp, boss.bossHp)
+        }
+        assertTrue("Defeating Don Foxone should clear W1-BOSS", engine.isStageCleared)
+        assertTrue("Defeating Don Foxone should award bonus carrots", engine.collectedCarrots >= 75)
+        assertTrue("Defeating Don Foxone should award Golden Shards", engine.collectedGoldenShards >= 2)
+    }
 }
 
