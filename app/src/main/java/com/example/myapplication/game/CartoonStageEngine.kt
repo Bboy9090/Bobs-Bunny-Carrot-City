@@ -876,7 +876,9 @@ class CartoonStageEngine(
                 setQuip("${boss.kind.title} down! $remainingBosses Boss(es) left in the Gauntlet! 🔥")
             }
         } else {
-            setQuip("Keep the pressure on ${boss.kind.title}! 😂")
+            val phaseNum = (boss.bossMaxHp - boss.bossHp + 1).coerceAtLeast(2)
+            spawnFloatingText("PHASE $phaseNum! FASTER! ⚡", boss.x, boss.y - 135f, Color(0xFFFF9100))
+            setQuip("Phase $phaseNum! Keep the pressure on ${boss.kind.title}! 😂")
         }
     }
 
