@@ -73,8 +73,8 @@ fun CartoonStageCanvas(
         val visibleWorldH = size.height / scale
         engine.viewportWorldWidth = visibleWorldW
 
-        // Vertical alignment: ground at ~72% of visible screen height
-        val worldOffsetY = (visibleWorldH * 0.72f - LevelBuilder.GROUND_Y).coerceAtLeast(0f)
+        // Vertical alignment: ground at ~62% of visible screen height so Bob stands cleanly above bottom touch controls
+        val worldOffsetY = (visibleWorldH * 0.62f - LevelBuilder.GROUND_Y).coerceAtLeast(0f)
         val camX = engine.cameraX
 
         // Hardened Screen Shake with dampened sine/cosine vibration
@@ -1642,6 +1642,12 @@ private fun DrawScope.drawHeroCharacterDetailed(
             return@withTransform
         }
 
+        // CANONICAL APPROVED BOB'S BUNNY DESIGN
+        if (hero == PlayableHero.BOBS_BUNNY) {
+            drawCanonicalBobDetailed(engine, headgear, hoodie, kicks, px, py, dir, tick, outline)
+            return@withTransform
+        }
+
         // -------------------------------------------------------------
         // BOBS FLUFFY SCALLOPED COTTONTAIL PUFF (AT BACK OF HIP)
         // -------------------------------------------------------------
@@ -2297,6 +2303,465 @@ private fun DrawScope.drawHeroCharacterDetailed(
     }
 }
 
+/**
+ * Renders the approved canonical Bob's Bunny design:
+ * taller/slimmer athletic proportions, golden-cream & warm-white fur,
+ * expressive blue eyes, leather aviator cap with yellow goggles, yellow scarf,
+ * orange-and-white outerwear, midnight-navy pants, utility belt, gloves,
+ * and white-and-yellow footwear.
+ */
+private fun DrawScope.drawCanonicalBobDetailed(
+    engine: CartoonStageEngine,
+    headgear: SwagItem,
+    hoodie: SwagItem,
+    kicks: SwagItem,
+    px: Float,
+    py: Float,
+    dir: Float,
+    tick: Int,
+    outline: Color
+) {
+    val furCream = Color(0xFFF4D58D)
+    val furWarmWhite = Color(0xFFFFFBF2)
+    val pantsNavy = Color(0xFF162040)
+    val pantsHighlight = Color(0xFF283566)
+    val scarfYellow = Color(0xFFFFD600)
+    val scarfShade = Color(0xFFFFA000)
+    val beltLeather = Color(0xFF4E342E)
+    val brassGold = Color(0xFFFFD54F)
+    val jacketPrimary = hoodie.primaryColor
+    val jacketTrim = hoodie.secondaryColor
+
+    val isHighSpeedDash = engine.trollDashTimer > 0f || abs(engine.playerVx) > 460f
+    val isRunning = abs(engine.playerVx) > 40f && engine.isGrounded
+    val idleBob = if (!isRunning && engine.isGrounded) sin(tick * 0.14f) * 1.6f else 0f
+
+    // Fluffy warm-white cottontail at back of hip
+    val tailBounce = if (isRunning) sin(tick * 0.55f) * 3.5f else 0f
+    val tx = px - dir * 18f
+    val ty = py - 48f + tailBounce + idleBob
+    drawCircle(color = furWarmWhite, radius = 8f, center = Offset(tx, ty))
+    drawCircle(color = furWarmWhite, radius = 6f, center = Offset(tx - dir * 4f, ty - 4f))
+    drawCircle(color = outline, radius = 8f, center = Offset(tx, ty), style = Stroke(width = 3f))
+
+    // -------------------------------------------------------------
+    // MIDNIGHT-NAVY ATHLETIC PANTS & WHITE-AND-YELLOW FOOTWEAR
+    // -------------------------------------------------------------
+    if (isHighSpeedDash) {
+        val wheelCenter = Offset(px - dir * 4f, py - 16f)
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(Color(0xEEFF6D00), Color(0x99FFD600), Color.Transparent),
+                center = wheelCenter,
+                radius = 30f
+            ),
+            radius = 30f,
+            center = wheelCenter
+        )
+        for (w in 0..3) {
+            val wAngle = Math.toRadians((tick * 22f * dir + w * 90f).toDouble())
+            val kx = wheelCenter.x + cos(wAngle).toFloat() * 20f
+            val ky = wheelCenter.y + sin(wAngle).toFloat() * 11f
+            drawRoundRect(
+                color = kicks.primaryColor,
+                topLeft = Offset(kx - 9f, ky - 5f),
+                size = Size(18f, 10f),
+                cornerRadius = CornerRadius(5f, 5f)
+            )
+            drawRoundRect(
+                color = outline,
+                topLeft = Offset(kx - 9f, ky - 5f),
+                size = Size(18f, 10f),
+                cornerRadius = CornerRadius(5f, 5f),
+                style = Stroke(width = 2.4f)
+            )
+        }
+    } else if (isRunning) {
+        val runPhase = tick * 0.45f
+        val foot1X = sin(runPhase) * 16f * dir
+        val foot1Y = abs(cos(runPhase)) * -9f
+        val foot2X = -sin(runPhase) * 16f * dir
+        val foot2Y = abs(cos(runPhase + Math.PI.toFloat())) * -9f
+
+        // Back leg (midnight-navy pants)
+        drawLine(
+            color = pantsNavy,
+            start = Offset(px - dir * 4f, py - 46f),
+            end = Offset(px - 4f + foot2X, py - 15f + foot2Y),
+            strokeWidth = 11f,
+            cap = StrokeCap.Round
+        )
+        drawCartoonSneaker(px - 15f + foot2X, py - 18f + foot2Y, kicks, outline)
+
+        // Front leg (midnight-navy pants with subtle highlight)
+        drawLine(
+            color = pantsNavy,
+            start = Offset(px + dir * 4f, py - 46f),
+            end = Offset(px + 4f + foot1X, py - 15f + foot1Y),
+            strokeWidth = 11.5f,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = pantsHighlight,
+            start = Offset(px + dir * 4f, py - 44f),
+            end = Offset(px + 4f + foot1X, py - 20f + foot1Y),
+            strokeWidth = 3f,
+            cap = StrokeCap.Round
+        )
+        drawCartoonSneaker(px - 7f + foot1X, py - 18f + foot1Y, kicks, outline)
+    } else {
+        val airLift = if (!engine.isGrounded && engine.isShowingDontLookDown) sin(tick * 0.9f) * 9f
+        else if (!engine.isGrounded) -5f
+        else 0f
+        // Left & right slim athletic legs in midnight-navy pants
+        drawRoundRect(
+            color = pantsNavy,
+            topLeft = Offset(px - 14f, py - 48f + idleBob),
+            size = Size(11f, 34f),
+            cornerRadius = CornerRadius(5f, 5f)
+        )
+        drawRoundRect(
+            color = outline,
+            topLeft = Offset(px - 14f, py - 48f + idleBob),
+            size = Size(11f, 34f),
+            cornerRadius = CornerRadius(5f, 5f),
+            style = Stroke(width = 2.8f)
+        )
+        drawRoundRect(
+            color = pantsNavy,
+            topLeft = Offset(px + 3f, py - 48f + idleBob),
+            size = Size(11f, 34f),
+            cornerRadius = CornerRadius(5f, 5f)
+        )
+        drawRoundRect(
+            color = outline,
+            topLeft = Offset(px + 3f, py - 48f + idleBob),
+            size = Size(11f, 34f),
+            cornerRadius = CornerRadius(5f, 5f),
+            style = Stroke(width = 2.8f)
+        )
+        drawCartoonSneaker(px - 22f, py - 18f + airLift, kicks, outline)
+        drawCartoonSneaker(px + 1f, py - 18f - airLift, kicks, outline)
+    }
+
+    // -------------------------------------------------------------
+    // BACK ARM & GLOVE
+    // -------------------------------------------------------------
+    val armSwing = if (isRunning) sin(tick * 0.45f) * 18f else if (!engine.isGrounded) -10f else 0f
+    val backHandX = px - dir * (19f + armSwing)
+    val backHandY = py - 54f + abs(armSwing * 0.35f) + idleBob
+    drawLine(
+        color = outline,
+        start = Offset(px - dir * 10f, py - 76f + idleBob),
+        end = Offset(backHandX, backHandY),
+        strokeWidth = 12f,
+        cap = StrokeCap.Round
+    )
+    drawLine(
+        color = jacketPrimary,
+        start = Offset(px - dir * 10f, py - 76f + idleBob),
+        end = Offset(backHandX, backHandY),
+        strokeWidth = 8.5f,
+        cap = StrokeCap.Round
+    )
+    drawCartoonGloveHand(backHandX, backHandY, outline)
+
+    // -------------------------------------------------------------
+    // ATHLETIC V-TAPER ORANGE-AND-WHITE OUTERWEAR & UTILITY BELT
+    // -------------------------------------------------------------
+    val torsoTopY = py - 84f + idleBob
+    val torsoBottomY = py - 46f + idleBob
+    val torsoPath = Path().apply {
+        moveTo(px - 19f, torsoTopY)
+        lineTo(px + 19f, torsoTopY)
+        cubicTo(px + 20f, torsoTopY + 14f, px + 15f, torsoBottomY - 6f, px + 14f, torsoBottomY)
+        lineTo(px - 14f, torsoBottomY)
+        cubicTo(px - 15f, torsoBottomY - 6f, px - 20f, torsoTopY + 14f, px - 19f, torsoTopY)
+        close()
+    }
+    drawPath(
+        torsoPath,
+        brush = Brush.verticalGradient(
+            listOf(jacketPrimary, jacketPrimary.copy(alpha = 0.9f)),
+            startY = torsoTopY,
+            endY = torsoBottomY
+        )
+    )
+    // Crisp warm-white athletic chest V-panel & shoulder trim
+    val whiteChestPanel = Path().apply {
+        moveTo(px - 11f, torsoTopY + 2f)
+        lineTo(px + 11f, torsoTopY + 2f)
+        lineTo(px + 6f, torsoBottomY - 4f)
+        lineTo(px - 6f, torsoBottomY - 4f)
+        close()
+    }
+    drawPath(whiteChestPanel, color = jacketTrim)
+    // Subtle athletic center zipper seam
+    drawLine(
+        color = outline.copy(alpha = 0.45f),
+        start = Offset(px, torsoTopY + 4f),
+        end = Offset(px, torsoBottomY - 3f),
+        strokeWidth = 1.8f
+    )
+    drawPath(torsoPath, color = outline, style = Stroke(width = 3.4f, join = StrokeJoin.Round))
+
+    // Utility Belt & Brass Buckle + Side Pouches
+    drawRoundRect(
+        color = beltLeather,
+        topLeft = Offset(px - 15f, torsoBottomY - 4f),
+        size = Size(30f, 8f),
+        cornerRadius = CornerRadius(3f, 3f)
+    )
+    drawRoundRect(
+        color = outline,
+        topLeft = Offset(px - 15f, torsoBottomY - 4f),
+        size = Size(30f, 8f),
+        cornerRadius = CornerRadius(3f, 3f),
+        style = Stroke(width = 2.4f)
+    )
+    // Side utility pouches
+    drawRoundRect(color = Color(0xFF6D4C41), topLeft = Offset(px - 15f, torsoBottomY - 2f), size = Size(7f, 8f), cornerRadius = CornerRadius(2f, 2f))
+    drawRoundRect(color = Color(0xFF6D4C41), topLeft = Offset(px + 8f, torsoBottomY - 2f), size = Size(7f, 8f), cornerRadius = CornerRadius(2f, 2f))
+    // Gold belt buckle
+    drawRoundRect(color = brassGold, topLeft = Offset(px - 5f, torsoBottomY - 3.5f), size = Size(10f, 7f), cornerRadius = CornerRadius(2f, 2f))
+    drawRoundRect(color = outline, topLeft = Offset(px - 5f, torsoBottomY - 3.5f), size = Size(10f, 7f), cornerRadius = CornerRadius(2f, 2f), style = Stroke(width = 1.8f))
+
+    // -------------------------------------------------------------
+    // DYNAMIC FLUTTERING YELLOW SCARF
+    // -------------------------------------------------------------
+    val scarfWave = sin(tick * 0.28f) * 6f + (if (isRunning) -4f else 0f)
+    val scarfTail = Path().apply {
+        moveTo(px - dir * 8f, torsoTopY + 2f)
+        cubicTo(
+            px - dir * 26f, torsoTopY - 4f + scarfWave,
+            px - dir * 36f, torsoTopY + 12f - scarfWave * 0.6f,
+            px - dir * 42f, torsoTopY + 16f + scarfWave
+        )
+        lineTo(px - dir * 34f, torsoTopY + 22f + scarfWave * 0.8f)
+        cubicTo(
+            px - dir * 24f, torsoTopY + 14f,
+            px - dir * 14f, torsoTopY + 8f,
+            px - dir * 6f, torsoTopY + 8f
+        )
+        close()
+    }
+    drawPath(scarfTail, color = scarfShade)
+    drawPath(scarfTail, color = outline, style = Stroke(width = 2.6f, join = StrokeJoin.Round))
+    // Scarf neck wrap
+    drawRoundRect(
+        color = scarfYellow,
+        topLeft = Offset(px - 15f, torsoTopY - 5f),
+        size = Size(30f, 10f),
+        cornerRadius = CornerRadius(5f, 5f)
+    )
+    drawRoundRect(
+        color = outline,
+        topLeft = Offset(px - 15f, torsoTopY - 5f),
+        size = Size(30f, 10f),
+        cornerRadius = CornerRadius(5f, 5f),
+        style = Stroke(width = 2.8f)
+    )
+
+    // -------------------------------------------------------------
+    // FRONT ARM & GLOVE
+    // -------------------------------------------------------------
+    val frontHandX = px + dir * (18f + armSwing)
+    val frontHandY = py - 56f - abs(armSwing * 0.35f) + idleBob
+    drawLine(
+        color = outline,
+        start = Offset(px + dir * 11f, py - 76f + idleBob),
+        end = Offset(frontHandX, frontHandY),
+        strokeWidth = 12f,
+        cap = StrokeCap.Round
+    )
+    drawLine(
+        color = jacketPrimary,
+        start = Offset(px + dir * 11f, py - 76f + idleBob),
+        end = Offset(frontHandX, frontHandY),
+        strokeWidth = 8.5f,
+        cap = StrokeCap.Round
+    )
+    drawCartoonGloveHand(frontHandX, frontHandY, outline)
+
+    // -------------------------------------------------------------
+    // GOLDEN-CREAM & WARM-WHITE HEAD + EXPRESSIVE EARS + AVIATOR CAP
+    // -------------------------------------------------------------
+    val headY = py - 103f + idleBob
+
+    // Expressive tall rabbit ears
+    val earTilt = if (isRunning) -dir * (abs(engine.playerVx) / 500f).coerceIn(0f, 1f) * 20f else 0f
+    if (engine.isHelicopterGliding || engine.isShowingDontLookDown) {
+        val spread = cos(Math.toRadians(engine.earSpinAngle.toDouble())).toFloat() * 48f
+        val halfSpan = abs(spread).coerceAtLeast(44f)
+        drawRoundRect(color = furCream, topLeft = Offset(px - halfSpan, headY - 32f), size = Size(halfSpan * 2f, 14f), cornerRadius = CornerRadius(7f, 7f))
+        drawRoundRect(color = outline, topLeft = Offset(px - halfSpan, headY - 32f), size = Size(halfSpan * 2f, 14f), cornerRadius = CornerRadius(7f, 7f), style = Stroke(width = 3.4f))
+        drawOval(color = Color.White.copy(alpha = 0.55f), topLeft = Offset(px - halfSpan * 0.9f, headY - 40f), size = Size(halfSpan * 1.8f, 8f), style = Stroke(width = 2f))
+    } else {
+        val leftEar = Path().apply {
+            moveTo(px - 12f, headY - 18f)
+            cubicTo(px - 22f + earTilt * 0.5f, headY - 42f, px - 20f + earTilt, headY - 66f, px - 9f + earTilt * 1.2f, headY - 70f)
+            cubicTo(px - 1f + earTilt, headY - 64f, px - 3f + earTilt * 0.4f, headY - 40f, px - 4f, headY - 18f)
+            close()
+        }
+        drawPath(leftEar, color = furCream)
+        val leftInner = Path().apply {
+            moveTo(px - 10f, headY - 22f)
+            cubicTo(px - 17f + earTilt * 0.5f, headY - 40f, px - 15f + earTilt, headY - 58f, px - 9f + earTilt * 1.1f, headY - 61f)
+            cubicTo(px - 5f + earTilt, headY - 56f, px - 5f + earTilt * 0.4f, headY - 38f, px - 6f, headY - 22f)
+            close()
+        }
+        drawPath(leftInner, color = Color(0xFFFFAB91))
+        drawPath(leftEar, color = outline, style = Stroke(width = 3.4f, join = StrokeJoin.Round))
+
+        val rightTipDroop = sin(tick * 0.08f) * 3f + (if (engine.squashStretchY < 0.85f) 6f else 0f)
+        val rightEar = Path().apply {
+            moveTo(px + 4f, headY - 18f)
+            cubicTo(px + 3f + earTilt * 0.4f, headY - 40f, px + 4f + earTilt, headY - 64f, px + 13f + earTilt * 1.3f, headY - 69f + rightTipDroop)
+            cubicTo(px + 23f + earTilt, headY - 62f + rightTipDroop, px + 22f + earTilt * 0.5f, headY - 40f, px + 12f, headY - 18f)
+            close()
+        }
+        drawPath(rightEar, color = furCream)
+        val rightInner = Path().apply {
+            moveTo(px + 6f, headY - 22f)
+            cubicTo(px + 5f + earTilt * 0.4f, headY - 38f, px + 6f + earTilt, headY - 56f, px + 12f + earTilt * 1.1f, headY - 60f + rightTipDroop)
+            cubicTo(px + 17f + earTilt, headY - 54f + rightTipDroop, px + 16f + earTilt * 0.5f, headY - 38f, px + 10f, headY - 22f)
+            close()
+        }
+        drawPath(rightInner, color = Color(0xFFFFAB91))
+        drawPath(rightEar, color = outline, style = Stroke(width = 3.4f, join = StrokeJoin.Round))
+    }
+
+    // Cheek fur tufts
+    val cheekTufts = Path().apply {
+        moveTo(px - 19f, headY)
+        lineTo(px - 28f, headY + 4f)
+        lineTo(px - 22f, headY + 8f)
+        lineTo(px - 27f, headY + 12f)
+        lineTo(px - 17f, headY + 14f)
+        moveTo(px + 19f, headY)
+        lineTo(px + 28f, headY + 4f)
+        lineTo(px + 22f, headY + 8f)
+        lineTo(px + 27f, headY + 12f)
+        lineTo(px + 17f, headY + 14f)
+    }
+    drawPath(cheekTufts, color = furCream)
+    drawPath(cheekTufts, color = outline, style = Stroke(width = 3f, join = StrokeJoin.Round))
+
+    // Main Head Cranium (Golden-Cream Fur)
+    drawCircle(color = furCream, radius = 23f, center = Offset(px, headY))
+    drawCircle(color = outline, radius = 23f, center = Offset(px, headY), style = Stroke(width = 3.4f))
+
+    // Leather Aviator Cap with Yellow Goggles (Default canonical headgear)
+    if (headgear.id == "head_classic_shades") {
+        // Aviator cap dome
+        drawArc(
+            color = Color(0xFF5D4037),
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = true,
+            topLeft = Offset(px - 23f, headY - 25f),
+            size = Size(46f, 34f)
+        )
+        drawArc(
+            color = outline,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = Offset(px - 23f, headY - 25f),
+            size = Size(46f, 34f),
+            style = Stroke(width = 3f)
+        )
+        // Side ear-flap straps
+        drawRoundRect(color = Color(0xFF4E342E), topLeft = Offset(px - 24f, headY - 10f), size = Size(6f, 16f), cornerRadius = CornerRadius(3f, 3f))
+        drawRoundRect(color = Color(0xFF4E342E), topLeft = Offset(px + 18f, headY - 10f), size = Size(6f, 16f), cornerRadius = CornerRadius(3f, 3f))
+
+        // Yellow Aviator Goggles perched on cap forehead
+        for (gxOffset in listOf(-9f, 9f)) {
+            val gx = px + gxOffset + dir * 1.5f
+            val gy = headY - 15f
+            drawCircle(color = Color(0xFF3E2723), radius = 8.5f, center = Offset(gx, gy))
+            drawCircle(color = Color(0xFFFFD600), radius = 6.2f, center = Offset(gx, gy))
+            drawCircle(color = Color.White.copy(alpha = 0.75f), radius = 2f, center = Offset(gx - 2f, gy - 2f))
+            drawCircle(color = outline, radius = 8.5f, center = Offset(gx, gy), style = Stroke(width = 2f))
+        }
+        // Goggle bridge
+        drawLine(color = Color(0xFF3E2723), start = Offset(px - 2f + dir * 1.5f, headY - 15f), end = Offset(px + 2f + dir * 1.5f, headY - 15f), strokeWidth = 3f)
+    } else {
+        drawRoundRect(color = headgear.primaryColor, topLeft = Offset(px - 20f, headY - 24f), size = Size(40f, 13f), cornerRadius = CornerRadius(6f, 6f))
+        drawRoundRect(color = outline, topLeft = Offset(px - 20f, headY - 24f), size = Size(40f, 13f), cornerRadius = CornerRadius(6f, 6f), style = Stroke(width = 3f))
+    }
+
+    // Warm-white muzzle, whiskers, nose & expressive grin
+    val cheekY = headY + 6f
+    drawOval(color = furWarmWhite, topLeft = Offset(px - 19f, cheekY - 8f), size = Size(20f, 15f))
+    drawOval(color = furWarmWhite, topLeft = Offset(px - 1f, cheekY - 8f), size = Size(20f, 15f))
+    drawOval(color = outline, topLeft = Offset(px - 19f, cheekY - 8f), size = Size(20f, 15f), style = Stroke(width = 2f))
+    drawOval(color = outline, topLeft = Offset(px - 1f, cheekY - 8f), size = Size(20f, 15f), style = Stroke(width = 2f))
+    drawCircle(color = furWarmWhite, radius = 7f, center = Offset(px, cheekY - 1f))
+
+    // Whiskers
+    for (w in -1..1) {
+        val wy = cheekY + w * 3.5f
+        drawLine(color = outline, start = Offset(px - 14f, wy), end = Offset(px - 26f, wy + w * 2.5f), strokeWidth = 1.6f, cap = StrokeCap.Round)
+        drawLine(color = outline, start = Offset(px + 14f, wy), end = Offset(px + 26f, wy + w * 2.5f), strokeWidth = 1.6f, cap = StrokeCap.Round)
+    }
+
+    // Pink rabbit nose & smile
+    val nosePath = Path().apply {
+        moveTo(px - 4.5f, headY + 1f)
+        lineTo(px + 4.5f, headY + 1f)
+        lineTo(px, headY + 6f)
+        close()
+    }
+    drawPath(nosePath, color = Color(0xFFFF4081))
+    drawPath(nosePath, color = outline, style = Stroke(width = 1.6f, join = StrokeJoin.Round))
+    val mouthY = headY + 10f
+    val mouthPath = Path().apply {
+        moveTo(px - 8f, mouthY)
+        quadraticBezierTo(px, mouthY + 9f, px + 8f, mouthY)
+        close()
+    }
+    drawPath(mouthPath, color = Color(0xFF880E4F))
+    drawPath(mouthPath, color = outline, style = Stroke(width = 2f))
+    drawRoundRect(color = Color.White, topLeft = Offset(px - 4.5f, mouthY - 0.5f), size = Size(4.4f, 6f), cornerRadius = CornerRadius(1.5f, 1.5f))
+    drawRoundRect(color = Color.White, topLeft = Offset(px + 0.1f, mouthY - 0.5f), size = Size(4.4f, 6f), cornerRadius = CornerRadius(1.5f, 1.5f))
+
+    // Expressive eyebrows
+    val browRaise = if (!engine.isGrounded) -2.5f else 0f
+    drawArc(color = outline, startAngle = 200f, sweepAngle = 140f, useCenter = false, topLeft = Offset(px - 16f, headY - 14f + browRaise), size = Size(12f, 6f), style = Stroke(width = 2.4f, cap = StrokeCap.Round))
+    drawArc(color = outline, startAngle = 200f, sweepAngle = 140f, useCenter = false, topLeft = Offset(px + 4f, headY - 14f + browRaise), size = Size(12f, 6f), style = Stroke(width = 2.4f, cap = StrokeCap.Round))
+
+    // Expressive Blue Eyes (always visible unless Swag Shades power-up is active!)
+    if (engine.isShowingDontLookDown) {
+        for (exOffset in listOf(-7.5f, 7.5f)) {
+            drawCircle(color = Color.White, radius = 8.5f, center = Offset(px + exOffset, headY - 4f))
+            drawCircle(color = Color(0xFF1E88E5), radius = 4f, center = Offset(px + exOffset, headY - 4f))
+            drawCircle(color = outline, radius = 8.5f, center = Offset(px + exOffset, headY - 4f), style = Stroke(width = 2.2f))
+        }
+    } else if (engine.activePowerUp == PowerUpType.SWAG_SHADES) {
+        val shadesX = px + dir * 2f - 20f
+        val shadesY = headY - 10f
+        drawRoundRect(color = Color(0xFF111111), topLeft = Offset(shadesX, shadesY), size = Size(40f, 14f), cornerRadius = CornerRadius(5f, 5f))
+        drawRoundRect(color = Color(0xFF00E5FF), topLeft = Offset(shadesX, shadesY), size = Size(40f, 14f), cornerRadius = CornerRadius(5f, 5f), style = Stroke(width = 2.4f))
+    } else {
+        val isBlinking = (tick % 180) in 0..3
+        for (exOffset in listOf(-7.5f, 7.5f)) {
+            val ex = px + exOffset
+            val ey = headY - 4f
+            if (isBlinking) {
+                drawLine(color = outline, start = Offset(ex - 6f, ey), end = Offset(ex + 6f, ey), strokeWidth = 2.6f, cap = StrokeCap.Round)
+            } else {
+                drawCircle(color = Color.White, radius = 7.8f, center = Offset(ex, ey))
+                drawCircle(color = Color(0xFF1E88E5), radius = 5.0f, center = Offset(ex + dir * 1.5f, ey))
+                drawCircle(color = Color(0xFF4FC3F7), radius = 3.2f, center = Offset(ex + dir * 1.5f, ey + 1f))
+                drawCircle(color = Color(0xFF0D1B2A), radius = 2.7f, center = Offset(ex + dir * 1.8f, ey))
+                drawCircle(color = Color.White, radius = 2.0f, center = Offset(ex - 1f + dir * 1.5f, ey - 2f))
+                drawCircle(color = outline, radius = 7.8f, center = Offset(ex, ey), style = Stroke(width = 2.1f))
+            }
+        }
+    }
+}
+
 /** Draws a high-top streetwear cartoon sneaker with white toe-cap, X-laces, ankle star patch & rubber sole */
 private fun DrawScope.drawCartoonSneaker(
     x: Float,
@@ -2318,11 +2783,13 @@ private fun DrawScope.drawCartoonSneaker(
         size = Size(9f, 10f),
         cornerRadius = CornerRadius(5f, 5f)
     )
-    // Thick white vulcanized midsole
-    drawRect(color = Color.White, topLeft = Offset(x, y + 13f), size = Size(23f, 5f))
-    // White X-laces
-    drawLine(color = Color.White, start = Offset(x + 9f, y + 4f), end = Offset(x + 14f, y + 7f), strokeWidth = 1.6f)
-    drawLine(color = Color.White, start = Offset(x + 9f, y + 7f), end = Offset(x + 14f, y + 4f), strokeWidth = 1.6f)
+    // Thick vulcanized midsole (uses secondaryColor trim when primary is white)
+    val midsoleColor = if (kicks.primaryColor == Color.White) kicks.secondaryColor else Color.White
+    drawRect(color = midsoleColor, topLeft = Offset(x, y + 13f), size = Size(23f, 5f))
+    // Laces
+    val laceColor = if (kicks.primaryColor == Color.White) kicks.secondaryColor else Color.White
+    drawLine(color = laceColor, start = Offset(x + 9f, y + 4f), end = Offset(x + 14f, y + 7f), strokeWidth = 1.6f)
+    drawLine(color = laceColor, start = Offset(x + 9f, y + 7f), end = Offset(x + 14f, y + 4f), strokeWidth = 1.6f)
     // Ankle star emblem circle
     drawCircle(color = Color.White, radius = 3.2f, center = Offset(x + 6f, y + 7f))
     drawCircle(color = kicks.secondaryColor, radius = 1.8f, center = Offset(x + 6f, y + 7f))
@@ -2794,6 +3261,34 @@ private fun DrawScope.drawCartoonBossDetailed(
             drawRect(color = Color.Black, topLeft = Offset(ex - 24f, ey - 148f), size = Size(48f, 5f))
             drawRoundRect(color = outline, topLeft = Offset(ex - 28f, ey - 160f), size = Size(56f, 18f), cornerRadius = CornerRadius(6f, 6f), style = Stroke(width = 3.2f))
         }
+    }
+
+    // Segmented Boss HP & Stun Telegraph Bar above boss
+    val maxHp = enemy.bossMaxHp.coerceAtLeast(1)
+    val barWidth = 112f
+    val barX = ex - barWidth / 2f
+    val barY = ey - 196f
+    drawRoundRect(
+        color = Color(0xCC111111),
+        topLeft = Offset(barX - 4f, barY - 4f),
+        size = Size(barWidth + 8f, 16f),
+        cornerRadius = CornerRadius(6f, 6f)
+    )
+    val segWidth = (barWidth - (maxHp - 1) * 3f) / maxHp
+    for (hpIdx in 0 until maxHp) {
+        val sx = barX + hpIdx * (segWidth + 3f)
+        val segColor = when {
+            hpIdx >= enemy.bossHp -> Color(0xFF37474F)
+            isStunned -> Color(0xFFFFD600)
+            enemy.bossHp == 1 -> Color(0xFFFF1744)
+            else -> Color(0xFF00E676)
+        }
+        drawRoundRect(
+            color = segColor,
+            topLeft = Offset(sx, barY),
+            size = Size(segWidth, 8f),
+            cornerRadius = CornerRadius(3f, 3f)
+        )
     }
 }
 

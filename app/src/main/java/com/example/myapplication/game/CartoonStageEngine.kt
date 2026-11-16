@@ -38,6 +38,8 @@ class CartoonStageEngine(
     // Player physics state
     var playerX by mutableFloatStateOf(160f)
     var playerY by mutableFloatStateOf(LevelBuilder.GROUND_Y)
+    var lastSafeX by mutableFloatStateOf(160f)
+    var lastSafeY by mutableFloatStateOf(LevelBuilder.GROUND_Y)
     var playerVx by mutableFloatStateOf(0f)
     var playerVy by mutableFloatStateOf(0f)
     var facingRight by mutableStateOf(true)
@@ -571,6 +573,12 @@ class CartoonStageEngine(
                     isGrounded = true
                     isRailGrinding = false
                     jumpCount = 0
+                    if (landedPlatform.kind == PlatformKind.SOLID) {
+                        val minSafe = landedPlatform.x + 24f
+                        val maxSafe = (landedPlatform.x + landedPlatform.width - 24f).coerceAtLeast(minSafe)
+                        lastSafeX = playerX.coerceIn(minSafe, maxSafe)
+                        lastSafeY = landedPlatform.y
+                    }
                 }
             }
         }
@@ -602,12 +610,13 @@ class CartoonStageEngine(
         if (playerY > LevelBuilder.GROUND_Y + 240f) {
             if (healthState == CartoonHealthState.FULL_SWAG) {
                 healthState = CartoonHealthState.SCUFFED
-                playerY = LevelBuilder.GROUND_Y - 120f
-                playerVy = -720f
-                playerX = (playerX - 90f).coerceAtLeast(120f)
+                playerX = lastSafeX
+                playerY = lastSafeY - 40f
+                playerVx = 0f
+                playerVy = -420f
                 invulnerableTimer = 2.0f
                 soundEngine.playBoing()
-                spawnFloatingText("CARTOON SPRING RESCUE!", playerX, playerY, Color(0xFFFF9100))
+                spawnFloatingText("CHECKPOINT SPRING RESCUE!", playerX, playerY, Color(0xFFFF9100))
             } else {
                 isStageFailed = true
                 soundEngine.playBonk()
@@ -876,7 +885,9 @@ class CartoonStageEngine(
                 setQuip("${boss.kind.title} down! $remainingBosses Boss(es) left in the Gauntlet! 🔥")
             }
         } else {
-            setQuip("Keep the pressure on ${boss.kind.title}! 😂")
+            val phaseNum = (boss.bossMaxHp - boss.bossHp + 1).coerceAtLeast(2)
+            spawnFloatingText("PHASE $phaseNum! FASTER! ⚡", boss.x, boss.y - 135f, Color(0xFFFF9100))
+            setQuip("Phase $phaseNum! Keep the pressure on ${boss.kind.title}! 😂")
         }
     }
 
