@@ -73,8 +73,8 @@ fun CartoonStageCanvas(
         val visibleWorldH = size.height / scale
         engine.viewportWorldWidth = visibleWorldW
 
-        // Vertical alignment: ground at ~72% of visible screen height
-        val worldOffsetY = (visibleWorldH * 0.72f - LevelBuilder.GROUND_Y).coerceAtLeast(0f)
+        // Vertical alignment: ground at ~62% of visible screen height so Bob stands cleanly above bottom touch controls
+        val worldOffsetY = (visibleWorldH * 0.62f - LevelBuilder.GROUND_Y).coerceAtLeast(0f)
         val camX = engine.cameraX
 
         // Hardened Screen Shake with dampened sine/cosine vibration

@@ -413,7 +413,7 @@ fun GamePlayScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .systemBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
@@ -603,7 +603,7 @@ private fun ArcadeHoldButton(
     var isPressed by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
-            .size(74.dp)
+            .size(58.dp)
             .clip(CircleShape)
             .background(
                 brush = Brush.verticalGradient(
@@ -641,13 +641,13 @@ private fun ArcadeHoldButton(
             Text(
                 text = label,
                 color = if (isPressed) Color.Black else Color.White,
-                fontSize = 21.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Black
             )
             Text(
                 text = subtitle,
                 color = if (isPressed) Color.Black else Color.White.copy(alpha = 0.92f),
-                fontSize = 9.sp,
+                fontSize = 8.sp,
                 fontWeight = FontWeight.ExtraBold
             )
         }

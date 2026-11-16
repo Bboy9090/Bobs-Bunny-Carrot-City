@@ -4,11 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
@@ -77,7 +79,7 @@ fun HomeHubScreen(
                 )
             )
             .systemBarsPadding()
-            .padding(16.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         // Top Banner: Title + Economy Stash
         Row(
@@ -128,135 +130,147 @@ fun HomeHubScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Quick-Access Mode Buttons (Heroes & City, Cartoon Studio, Swag Shop, 1v3 Hunt, Roadmap)
+        val compactBtnPad = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Button(
                 onClick = onOpenCityLife,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = 34.dp),
+                contentPadding = compactBtnPad,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676))
             ) {
                 Text("🦸 City & Trophies", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
             }
             Button(
                 onClick = onOpenCartoonStudio,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = 34.dp),
+                contentPadding = compactBtnPad,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE040FB))
             ) {
                 Text("🎬 Studio", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
             }
             Button(
                 onClick = onOpenSwagShop,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = 34.dp),
+                contentPadding = compactBtnPad,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6D00))
             ) {
                 Text("👟 Swag", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
             }
             Button(
                 onClick = onOpenMultiplayer,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = 34.dp),
+                contentPadding = compactBtnPad,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF))
             ) {
                 Text("🦊 1v3 Party", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
             }
             Button(
                 onClick = onOpenMasterRoadmap,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = 34.dp),
+                contentPadding = compactBtnPad,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700))
             ) {
                 Text("🗺️ Plan", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
-        // Golden Statue Plaza Progress Banner
-        Card(
+        // Compact Landscape Row: Golden Statue Progress + View Mode Switcher
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF251D4A))
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "✨ ${profile.goldenStatueTierName}",
+            Card(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF251D4A))
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "✨ ${profile.goldenStatueTierName}",
+                            color = Color(0xFFFFD700),
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 11.5.sp,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = "👑 ${profile.bossStagesClearedCount}/7",
+                            color = Color(0xFF00E676),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { profile.goldenWorldProgressFraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(5.dp)
+                            .clip(RoundedCornerShape(4.dp)),
                         color = Color(0xFFFFD700),
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp
-                    )
-                    Text(
-                        text = "Boss Stages Foiled: 👑 ${profile.bossStagesClearedCount}/7",
-                        color = Color(0xFF00E676),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                        trackColor = Color(0x33FFFFFF)
                     )
                 }
-                Spacer(modifier = Modifier.height(5.dp))
-                LinearProgressIndicator(
-                    progress = { profile.goldenWorldProgressFraction },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(7.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = Color(0xFFFFD700),
-                    trackColor = Color(0x33FFFFFF)
-                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .weight(1.05f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFF221848))
+                    .border(2.dp, Color(0xFFFFD700), RoundedCornerShape(14.dp))
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Button(
+                    onClick = { isWorldMapView = true },
+                    modifier = Modifier.weight(1f).heightIn(min = 34.dp),
+                    contentPadding = compactBtnPad,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isWorldMapView) Color(0xFFFFD700) else Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = "🗺️ CARTOON WORLD MAP",
+                        color = if (isWorldMapView) Color.Black else Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp
+                    )
+                }
+                Button(
+                    onClick = { isWorldMapView = false },
+                    modifier = Modifier.weight(1f).heightIn(min = 34.dp),
+                    contentPadding = compactBtnPad,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (!isWorldMapView) Color(0xFF00E5FF) else Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = "📋 STAGE ROSTER",
+                        color = if (!isWorldMapView) Color.Black else Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // View Mode Switcher: 🗺️ Cartoon World Map (Default) vs 📋 Stage Grid Roster
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF221848))
-                .border(2.dp, Color(0xFFFFD700), RoundedCornerShape(16.dp))
-                .padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Button(
-                onClick = { isWorldMapView = true },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isWorldMapView) Color(0xFFFFD700) else Color.Transparent
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = "🗺️ CARTOON WORLD MAP",
-                    color = if (isWorldMapView) Color.Black else Color.White,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 11.5.sp
-                )
-            }
-            Button(
-                onClick = { isWorldMapView = false },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!isWorldMapView) Color(0xFF00E5FF) else Color.Transparent
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = "📋 STAGE ROSTER",
-                    color = if (!isWorldMapView) Color.Black else Color.White,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 11.5.sp
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         if (isWorldMapView) {
             // Interactive 11-World Cartoon Overworld Map with Bobs Bunny on the Road!
