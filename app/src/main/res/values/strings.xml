@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Bobs Bunny: Carrot City</string>
+    <string name="baking_title">Bobs Bunny: Carrot City</string>
+    <string name="image1_description">Image 1</string>
+    <string name="image2_description">Image 2</string>
+    <string name="image3_description">Image 3</string>
+    <string name="label_prompt">Prompt</string>
+    <string name="prompt_placeholder">Enter prompt</string>
+    <string name="action_go">Go</string>
+    <string name="results_placeholder">Results</string>
+</resources>
