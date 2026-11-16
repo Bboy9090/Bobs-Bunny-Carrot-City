@@ -56,6 +56,7 @@ import com.example.myapplication.audio.CartoonSoundEngine
 import com.example.myapplication.data.PlayerProfileState
 import com.example.myapplication.game.CartoonStageEngine
 import com.example.myapplication.model.GameCatalog
+import com.example.myapplication.ui.game3d.Cartoon3DDioramaView
 import com.example.myapplication.model.StageConfig
 import com.example.myapplication.ui.game.CartoonStageCanvas
 
@@ -95,6 +96,7 @@ fun GamePlayScreen(
 
     var attemptKey by remember { mutableStateOf(0) }
     var isPaused by remember { mutableStateOf(false) }
+    var use3DDiorama by remember(stageConfig.id) { mutableStateOf(stageConfig.code == "W1-1") }
     var rewardCommitted by remember(stageConfig.id, attemptKey) { mutableStateOf(false) }
 
     val engine = remember(stageConfig, attemptKey, activeHero.id, activeMutator.id) {
@@ -183,13 +185,17 @@ fun GamePlayScreen(
                 }
             }
     ) {
-        // 1. Live 2.5D Cartoon Stage Canvas
-        CartoonStageCanvas(
-            engine = engine,
-            headgear = headgear,
-            hoodie = hoodie,
-            kicks = kicks
-        )
+        // 1. Live 3D Diorama (W1-1 Vertical Slice) or 2.5D Cartoon Stage Canvas
+        if (use3DDiorama) {
+            Cartoon3DDioramaView(engine = engine)
+        } else {
+            CartoonStageCanvas(
+                engine = engine,
+                headgear = headgear,
+                hoodie = hoodie,
+                kicks = kicks
+            )
+        }
 
         // 2. Top HUD Overlay
         Column(
@@ -261,14 +267,31 @@ fun GamePlayScreen(
                     )
                 }
 
-                Button(
-                    onClick = { isPaused = !isPaused },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(2.5.dp, Color.White, RoundedCornerShape(12.dp))
-                ) {
-                    Text(if (isPaused) "Resume" else "Pause", fontWeight = FontWeight.Black, color = Color.White)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = { use3DDiorama = !use3DDiorama },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (use3DDiorama) Color(0xFF00E5FF) else Color(0xFF455A64)
+                        ),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(2.dp, Color.White, RoundedCornerShape(12.dp))
+                    ) {
+                        Text(
+                            text = if (use3DDiorama) "3D" else "2D",
+                            fontWeight = FontWeight.Black,
+                            color = if (use3DDiorama) Color.Black else Color.White
+                        )
+                    }
+                    Button(
+                        onClick = { isPaused = !isPaused },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(2.5.dp, Color.White, RoundedCornerShape(12.dp))
+                    ) {
+                        Text(if (isPaused) "Resume" else "Pause", fontWeight = FontWeight.Black, color = Color.White)
+                    }
                 }
             }
 
