@@ -123,6 +123,9 @@ class ExampleInstrumentedTest {
         composeRule.onNodeWithTag("stage_roster_list")
             .performScrollToNode(hasText("W1-1", substring = true))
         composeRule.onAllNodesWithText("PLAY").onFirst().performClick()
+        // Fail with a navigation-specific assertion if the roster remains
+        // active: a screenshot of the hub is not evidence of a 3D frame.
+        composeRule.onNodeWithText("3D").assertIsDisplayed()
         // Never query Compose semantics after entering the continuous 60-FPS
         // game loop; its recomposition keeps Espresso's idle gate busy.
         // The other W1-1 mode-toggle test already checks the 3D UI label.
