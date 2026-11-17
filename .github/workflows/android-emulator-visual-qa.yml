@@ -42,9 +42,10 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          # Automated Test Device avoids Pixel Launcher/Google-system ANRs
-          # seen in the prior real screenshot; GLES3 still must pass the test.
-          target: aosp_atd
+          # Standard AOSP image has a complete GLES3 surface stack without
+          # the Google Pixel Launcher ANR seen on google_apis; API35 aosp_atd
+          # advertised GLES3 but never produced a frame (1-color capture).
+          target: default
           arch: x86_64
           profile: pixel_6
           cores: 4
