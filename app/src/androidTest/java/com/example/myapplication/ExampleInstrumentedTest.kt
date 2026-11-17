@@ -111,6 +111,38 @@ class ExampleInstrumentedTest {
     }
 
     @Test
+    fun w1One_visualCaptureWaitsForFirst3dDraw() {
+        // This is an actual emulator screenshot of the GLES3 playfield, not
+        // a fabricated render or an illustration of the expected output.
+        composeRule.onNodeWithText("STAGE ROSTER", substring = true).performClick()
+        composeRule.onNodeWithTag("world_filter_tabs")
+            .performScrollToNode(hasText("W1: Carrot City", substring = true))
+        composeRule.onNodeWithText("W1: Carrot City", substring = true).performClick()
+        composeRule.onNodeWithTag("stage_roster_list")
+            .performScrollToNode(hasText("W1-1", substring = true))
+        composeRule.onAllNodesWithText("PLAY").onFirst().performClick()
+        composeRule.onNodeWithText("3D").assertIsDisplayed()
+
+        composeRule.waitUntil(timeoutMillis = 45_000) {
+            composeRule.onAllNodesWithText("Preparing Carrot City's 3D world…")
+                .fetchSemanticsNodes().isEmpty()
+        }
+
+        // First-frame event removes the overlay only after the renderer has
+        // drawn. Give the EGL swap a short opportunity to reach UiAutomation.
+        Thread.sleep(500)
+        val bitmap = requireNotNull(
+            InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        ) { "W1-1 3D UI screenshot was unavailable" }
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val saved = context.openFileOutput("bobs_w1_1_visual_qa.png", android.content.Context.MODE_PRIVATE).use {
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+        }
+        bitmap.recycle()
+        assertTrue("W1-1 3D screenshot encoding failed", saved)
+    }
+
+    @Test
     fun savePersistence_repositoryPersistsProgressAcrossReloads() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val repo1 = GameProgressRepository(context)
