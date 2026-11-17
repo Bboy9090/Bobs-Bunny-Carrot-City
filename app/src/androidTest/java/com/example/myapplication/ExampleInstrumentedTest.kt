@@ -123,11 +123,12 @@ class ExampleInstrumentedTest {
         composeRule.onNodeWithTag("stage_roster_list")
             .performScrollToNode(hasText("W1-1", substring = true))
         composeRule.onAllNodesWithText("PLAY").onFirst().performClick()
-        // Fail with a navigation-specific assertion if the roster remains
-        // active: a screenshot of the hub is not evidence of a 3D frame.
-        composeRule.onNodeWithText("3D").assertIsDisplayed()
-        // Never query Compose semantics after entering the continuous 60-FPS
-        // game loop; its recomposition keeps Espresso's idle gate busy.
+        // Do NOT request Compose idleness after launching the continuous
+        // 60-FPS game loop: Espresso can time out on normal recompositions.
+        // A standalone run starts at zero and requires a new renderer receipt,
+        // which is stronger evidence than a static "3D" label on the screen.
+        assertEquals("Focused render QA must start with no prior 3D frames", 0, completedBefore)
+        // No Compose semantics calls below this point; use the GL callback.
         // The other W1-1 mode-toggle test already checks the 3D UI label.
 
         val deadline = android.os.SystemClock.elapsedRealtime() + 45_000L
