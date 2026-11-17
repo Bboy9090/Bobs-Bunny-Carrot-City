@@ -12,6 +12,7 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Real-time OpenGL ES 3.0 3D Diorama renderer for Bob's Bunny: Carrot City.
@@ -27,6 +28,13 @@ class CarrotCity3DRenderer(
 
     companion object {
         private const val WORLD_SCALE = 0.01f
+
+        /**
+         * Instrumentation receipt incremented only AFTER a complete GLES3 scene
+         * draw. Avoids Compose's idle detector during the 60-FPS game loop.
+         * Does not expose gameplay state or modify the renderer's draw path.
+         */
+        val completedFirstFrames = AtomicInteger(0)
     }
 
     private lateinit var shader: DioramaShader
@@ -141,6 +149,7 @@ class CarrotCity3DRenderer(
         drawForegroundFraming(camX3d)
         if (!firstFrameReported) {
             firstFrameReported = true
+            completedFirstFrames.incrementAndGet()
             onFirstFrame()
         }
     }

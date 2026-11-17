@@ -16,6 +16,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.example.myapplication.audio.CartoonSoundEngine
 import com.example.myapplication.data.GameProgressRepository
 import com.example.myapplication.model.PlayableHero
+import com.example.myapplication.ui.game3d.CarrotCity3DRenderer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -112,8 +113,9 @@ class ExampleInstrumentedTest {
 
     @Test
     fun w1One_visualCaptureWaitsForFirst3dDraw() {
-        // This is an actual emulator screenshot of the GLES3 playfield, not
-        // a fabricated render or an illustration of the expected output.
+        // Only a completed GLES3 render increments this signal. Unlike
+        // Compose semantics polling, it never waits for a 60-FPS UI to idle.
+        val completedBefore = CarrotCity3DRenderer.completedFirstFrames.get()
         composeRule.onNodeWithText("STAGE ROSTER", substring = true).performClick()
         composeRule.onNodeWithTag("world_filter_tabs")
             .performScrollToNode(hasText("W1: Carrot City", substring = true))
@@ -123,14 +125,19 @@ class ExampleInstrumentedTest {
         composeRule.onAllNodesWithText("PLAY").onFirst().performClick()
         composeRule.onNodeWithText("3D").assertIsDisplayed()
 
-        composeRule.waitUntil(timeoutMillis = 45_000) {
-            composeRule.onAllNodesWithText("Preparing Carrot City's 3D world…")
-                .fetchSemanticsNodes().isEmpty()
+        val deadline = android.os.SystemClock.elapsedRealtime() + 45_000L
+        while (CarrotCity3DRenderer.completedFirstFrames.get() <= completedBefore &&
+            android.os.SystemClock.elapsedRealtime() < deadline) {
+            Thread.sleep(100)
         }
+        assertTrue(
+            "GLES3 never completed its first W1-1 frame",
+            CarrotCity3DRenderer.completedFirstFrames.get() > completedBefore
+        )
 
-        // First-frame event removes the overlay only after the renderer has
-        // drawn. Give the EGL swap a short opportunity to reach UiAutomation.
-        Thread.sleep(500)
+        // Allow the frame-ready main-thread callback and EGL buffer swap
+        // to finish before capturing actual device pixels.
+        Thread.sleep(800)
         val bitmap = requireNotNull(
             InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         ) { "W1-1 3D UI screenshot was unavailable" }
@@ -138,7 +145,17 @@ class ExampleInstrumentedTest {
         val saved = context.openFileOutput("bobs_w1_1_visual_qa.png", android.content.Context.MODE_PRIVATE).use {
             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
+        // Distinguish a rendered scene from a blank/monochrome buffer.
+        // Sample a coarse grid: no exact colors or final artwork are assumed.
+        val colors = mutableSetOf<Int>()
+        for (gy in 1..10) {
+            for (gx in 1..16) {
+                val color = bitmap.getPixel(gx * (bitmap.width - 1) / 17, gy * (bitmap.height - 1) / 11)
+                colors.add(color and 0x00F0F0F0)
+            }
+        }
         bitmap.recycle()
+        assertTrue("W1-1 screenshot shows a nearly uniform frame", colors.size >= 8)
         assertTrue("W1-1 3D screenshot encoding failed", saved)
     }
 
