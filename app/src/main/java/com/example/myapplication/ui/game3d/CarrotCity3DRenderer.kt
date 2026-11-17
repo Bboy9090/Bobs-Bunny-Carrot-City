@@ -21,7 +21,9 @@ import kotlin.math.sin
  * articulated 3D Bob character rig.
  */
 class CarrotCity3DRenderer(
-    private val engine: CartoonStageEngine
+    private val engine: CartoonStageEngine,
+    private val onFirstFrame: () -> Unit = {},
+    private val onInitializationFailure: (String) -> Unit = {}
 ) : GLSurfaceView.Renderer {
 
     companion object {
@@ -50,18 +52,26 @@ class CarrotCity3DRenderer(
         private set
     private var fpsFrames = 0
     private var fpsLastTimeNs = System.nanoTime()
+    private var initialized = false
+    private var firstFrameReported = false
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        GLES30.glEnable(GLES30.GL_DEPTH_TEST)
-        GLES30.glEnable(GLES30.GL_CULL_FACE)
-        GLES30.glEnable(GLES30.GL_BLEND)
-        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
-
-        shader = DioramaShader()
-        box = MeshPrimitives.createBox()
-        sphere = MeshPrimitives.createSphere()
-        cylinder = MeshPrimitives.createCylinder()
-        cone = MeshPrimitives.createCone()
+        initialized = false
+        firstFrameReported = false
+        try {
+            GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+            GLES30.glEnable(GLES30.GL_CULL_FACE)
+            GLES30.glEnable(GLES30.GL_BLEND)
+            GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
+            shader = DioramaShader()
+            box = MeshPrimitives.createBox()
+            sphere = MeshPrimitives.createSphere()
+            cylinder = MeshPrimitives.createCylinder()
+            cone = MeshPrimitives.createCone()
+            initialized = true
+        } catch (error: RuntimeException) {
+            onInitializationFailure(error.message ?: "OpenGL ES 3.0 initialization failed")
+        }
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -71,6 +81,11 @@ class CarrotCity3DRenderer(
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        if (!initialized) {
+            GLES30.glClearColor(0.07f, 0.12f, 0.22f, 1f)
+            GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
+            return
+        }
         fpsFrames++
         val now = System.nanoTime()
         if (now - fpsLastTimeNs >= 1_000_000_000L) {
@@ -123,6 +138,10 @@ class CarrotCity3DRenderer(
         drawBob3D(playerX3d, playerY3d, t)
         drawParticles3D()
         drawForegroundFraming(camX3d)
+        if (!firstFrameReported) {
+            firstFrameReported = true
+            onFirstFrame()
+        }
     }
 
     private fun drawMesh(

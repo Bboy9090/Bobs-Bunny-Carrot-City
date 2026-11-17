@@ -58,9 +58,19 @@ class DioramaShader {
         val vs = compileShader(GLES30.GL_VERTEX_SHADER, vertexSrc)
         val fs = compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentSrc)
         programId = GLES30.glCreateProgram().also { prog ->
+            check(prog != 0) { "Unable to create Bob's Bunny GLES3 shader program" }
             GLES30.glAttachShader(prog, vs)
             GLES30.glAttachShader(prog, fs)
             GLES30.glLinkProgram(prog)
+            val linkStatus = IntArray(1)
+            GLES30.glGetProgramiv(prog, GLES30.GL_LINK_STATUS, linkStatus, 0)
+            GLES30.glDeleteShader(vs)
+            GLES30.glDeleteShader(fs)
+            if (linkStatus[0] != GLES30.GL_TRUE) {
+                val info = GLES30.glGetProgramInfoLog(prog)
+                GLES30.glDeleteProgram(prog)
+                throw IllegalStateException("3D Diorama shader link failed: $info")
+            }
         }
         posLoc = GLES30.glGetAttribLocation(programId, "aPosition")
         normLoc = GLES30.glGetAttribLocation(programId, "aNormal")
@@ -72,8 +82,16 @@ class DioramaShader {
 
     private fun compileShader(type: Int, src: String): Int {
         val shader = GLES30.glCreateShader(type)
+        check(shader != 0) { "Unable to allocate 3D Diorama GLSL shader (type=$type)" }
         GLES30.glShaderSource(shader, src)
         GLES30.glCompileShader(shader)
+        val compileStatus = IntArray(1)
+        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compileStatus, 0)
+        if (compileStatus[0] != GLES30.GL_TRUE) {
+            val info = GLES30.glGetShaderInfoLog(shader)
+            GLES30.glDeleteShader(shader)
+            throw IllegalStateException("3D Diorama GLSL compilation failed (type=$type): $info")
+        }
         return shader
     }
 }
