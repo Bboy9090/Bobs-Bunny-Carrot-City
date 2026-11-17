@@ -31,6 +31,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.myapplication.game.CartoonStageEngine
+import kotlinx.coroutines.delay
 
 /**
  * W1-1 3D vertical slice. Show an intentional loading state until the first
@@ -48,13 +49,16 @@ fun Cartoon3DDioramaView(
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentUnavailable by rememberUpdatedState(on3DUnavailable)
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
-    val gles3Supported = remember(context) {
+    val reportedGlesVersion = remember(context) {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-        (manager?.deviceConfigurationInfo?.reqGlEsVersion ?: 0) >= 0x30000
+        manager?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
     }
+    val gles3Supported = reportedGlesVersion >= 0x30000
 
     if (!gles3Supported) {
         LaunchedEffect(engine) {
+            Log.w("BobsBunnyDiorama", "GLES3 not advertised: reqGlEsVersion=0x" +
+                reportedGlesVersion.toString(16) + "; using 2D fallback")
             currentUnavailable("OpenGL ES 3.0 is not supported on this device")
         }
         Box(modifier.fillMaxSize().background(Color(0xFF17243A)), contentAlignment = Alignment.Center) {
@@ -81,6 +85,16 @@ fun Cartoon3DDioramaView(
             setEGLContextClientVersion(3)
             setRenderer(renderer)
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        }
+    }
+
+    // Some EGL implementations never deliver onSurfaceCreated, even though
+    // ActivityManager advertised GLES3. Never strand players on a loader.
+    LaunchedEffect(engine, glView) {
+        delay(15_000L)
+        if (!frameReady) {
+            Log.e("BobsBunnyDiorama", "No completed GLES3 draw after 15 seconds; using 2D fallback")
+            currentUnavailable("3D renderer did not complete its first frame")
         }
     }
 

@@ -3,6 +3,7 @@ package com.example.myapplication.ui.game3d
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
+import android.util.Log
 import com.example.myapplication.game.LevelBuilder
 import com.example.myapplication.model.CartoonHealthState
 import com.example.myapplication.model.EnemyKind
@@ -66,6 +67,9 @@ class CarrotCity3DRenderer(
         initialized = false
         firstFrameReported = false
         try {
+            Log.i("BobsBunnyDiorama", "onSurfaceCreated GLES version=" +
+                GLES30.glGetString(GLES30.GL_VERSION) + " renderer=" +
+                GLES30.glGetString(GLES30.GL_RENDERER))
             GLES30.glEnable(GLES30.GL_DEPTH_TEST)
             GLES30.glEnable(GLES30.GL_CULL_FACE)
             GLES30.glEnable(GLES30.GL_BLEND)

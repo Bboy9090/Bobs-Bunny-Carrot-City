@@ -132,33 +132,44 @@ class ExampleInstrumentedTest {
             android.os.SystemClock.elapsedRealtime() < deadline) {
             Thread.sleep(100)
         }
-        assertTrue(
-            "GLES3 never completed its first W1-1 frame",
-            CarrotCity3DRenderer.completedFirstFrames.get() > completedBefore
-        )
-
-        // Allow the frame-ready main-thread callback and EGL buffer swap
-        // to finish before capturing actual device pixels.
-        Thread.sleep(800)
-        val bitmap = requireNotNull(
-            InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-        ) { "W1-1 3D UI screenshot was unavailable" }
+        val completedAfter = CarrotCity3DRenderer.completedFirstFrames.get()
+        val rendered3D = completedAfter > completedBefore
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val saved = context.openFileOutput("bobs_w1_1_visual_qa.png", android.content.Context.MODE_PRIVATE).use {
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-        }
-        // Distinguish a rendered scene from a blank/monochrome buffer.
-        // Sample a coarse grid: no exact colors or final artwork are assumed.
-        val colors = mutableSetOf<Int>()
-        for (gy in 1..10) {
-            for (gx in 1..16) {
-                val color = bitmap.getPixel(gx * (bitmap.width - 1) / 17, gy * (bitmap.height - 1) / 11)
-                colors.add(color and 0x00F0F0F0)
+        val manager = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        val reportedGles = manager?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
+
+        // Preserve screenshot AND capability evidence even if the 3D gate
+        // fails, so a hosted emulator limitation is not silently misdiagnosed.
+        Thread.sleep(800)
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        val saved = bitmap?.let { image ->
+            context.openFileOutput("bobs_w1_1_visual_qa.png", android.content.Context.MODE_PRIVATE).use {
+                image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }
+        } ?: false
+        val colors = mutableSetOf<Int>()
+        if (bitmap != null) {
+            for (gy in 1..10) {
+                for (gx in 1..16) {
+                    val color = bitmap.getPixel(gx * (bitmap.width - 1) / 17, gy * (bitmap.height - 1) / 11)
+                    colors.add(color and 0x00F0F0F0)
+                }
+            }
+            bitmap.recycle()
         }
-        bitmap.recycle()
-        assertTrue("W1-1 screenshot shows a nearly uniform frame", colors.size >= 8)
-        assertTrue("W1-1 3D screenshot encoding failed", saved)
+        val diagnostics = "sdk=" + android.os.Build.VERSION.SDK_INT +
+            "\nreportedGles=0x" + reportedGles.toString(16) +
+            "\nfirstFrameBefore=" + completedBefore +
+            "\nfirstFrameAfter=" + completedAfter +
+            "\n3dCompleted=" + rendered3D +
+            "\nscreenshotSaved=" + saved +
+            "\nsampledColorClasses=" + colors.size + "\n"
+        context.openFileOutput("bobs_w1_1_render_qa.txt", android.content.Context.MODE_PRIVATE)
+            .bufferedWriter().use { it.write(diagnostics) }
+
+        assertTrue("GLES3 did not complete first W1-1 frame: " + diagnostics, rendered3D)
+        assertTrue("W1-1 3D screenshot unavailable: " + diagnostics, saved)
+        assertTrue("W1-1 screenshot appears nearly uniform: " + diagnostics, colors.size >= 8)
     }
 
     @Test
