@@ -52,6 +52,8 @@ class ExampleInstrumentedTest {
     @Test
     fun stageRosterAndGameplay_launchW1BossAndTouchControlsRespond() {
         composeRule.onNodeWithText("STAGE ROSTER", substring = true).performClick()
+        composeRule.onNodeWithTag("world_filter_tabs")
+            .performScrollToNode(hasText("W1: Carrot City", substring = true))
         composeRule.onNodeWithText("W1: Carrot City", substring = true).performClick()
         composeRule.onNodeWithTag("stage_roster_list")
             .performScrollToNode(hasText("W1-BOSS", substring = true))
@@ -80,6 +82,32 @@ class ExampleInstrumentedTest {
         composeRule.mainClock.autoAdvance = true
         composeRule.onNodeWithText("World Hub", substring = true).performClick()
         composeRule.onNodeWithText("BOBS BUNNY: CARROT CITY", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun w1One_dioramaTogglePreservesStageAndClassic2dFallback() {
+        composeRule.onNodeWithText("STAGE ROSTER", substring = true).performClick()
+        composeRule.onNodeWithTag("world_filter_tabs")
+            .performScrollToNode(hasText("W1: Carrot City", substring = true))
+        composeRule.onNodeWithText("W1: Carrot City", substring = true).performClick()
+        composeRule.onNodeWithTag("stage_roster_list")
+            .performScrollToNode(hasText("W1-1", substring = true))
+        composeRule.onNodeWithText("W1-1", substring = true).assertIsDisplayed()
+        composeRule.onAllNodesWithText("PLAY").onFirst().performClick()
+
+        // Frame progression remains controlled while the native GL surface
+        // and Compose button states are switched repeatedly.
+        composeRule.mainClock.autoAdvance = false
+        composeRule.mainClock.advanceTimeBy(250)
+        composeRule.onNodeWithText("3D").assertIsDisplayed()
+        composeRule.onNodeWithText("3D").performClick()
+        composeRule.mainClock.advanceTimeBy(80)
+        composeRule.onNodeWithText("2D").assertIsDisplayed()
+        composeRule.onNodeWithText("2D").performClick()
+        composeRule.mainClock.advanceTimeBy(80)
+        composeRule.onNodeWithText("3D").assertIsDisplayed()
+        composeRule.onNodeWithText("W1-1", substring = true).assertIsDisplayed()
+        composeRule.mainClock.autoAdvance = true
     }
 
     @Test

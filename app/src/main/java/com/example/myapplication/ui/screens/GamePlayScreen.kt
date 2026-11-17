@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -50,6 +51,13 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.audio.CartoonSoundEngine
@@ -187,7 +195,10 @@ fun GamePlayScreen(
     ) {
         // 1. Live 3D Diorama (W1-1 Vertical Slice) or 2.5D Cartoon Stage Canvas
         if (use3DDiorama) {
-            Cartoon3DDioramaView(engine = engine)
+            Cartoon3DDioramaView(engine = engine, on3DUnavailable = {
+                // Retain the same gameplay state and return to the 2D renderer.
+                use3DDiorama = false
+            })
         } else {
             CartoonStageCanvas(
                 engine = engine,
@@ -397,28 +408,6 @@ fun GamePlayScreen(
                 }
             }
 
-            if (engine.quipTimer > 0f) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            brush = Brush.verticalGradient(
-                                listOf(Color(0xFFFFFDE7), Color(0xFFFFF9C4))
-                            )
-                        )
-                        .border(3.dp, Color(0xFFFF6D00), RoundedCornerShape(14.dp))
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
-                ) {
-                    Text(
-                        text = "💬 ${activeHero.displayName}: \"${engine.bobsQuip}\"",
-                        color = Color(0xFF1B0000),
-                        fontWeight = FontWeight.Black,
-                        fontSize = 12.5.sp
-                    )
-                }
-            }
-
             engine.floatingTexts.lastOrNull()?.let { callout ->
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -426,6 +415,32 @@ fun GamePlayScreen(
                     color = callout.color,
                     fontWeight = FontWeight.Black,
                     fontSize = 16.sp
+                )
+            }
+        }
+
+        // Compact quip card stays to the right instead of obscuring Bob's jumps.
+        if (engine.quipTimer > 0f && bossEntity == null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .systemBarsPadding()
+                    .padding(top = 112.dp, end = 14.dp)
+                    .widthIn(max = 220.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xF5FFF8DC))
+                    .border(2.dp, Color(0xFFFF6D00), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = "💬 ${activeHero.displayName}: \"${engine.bobsQuip}\"",
+                    color = Color(0xFF1B0000),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.5.sp,
+                    lineHeight = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -638,6 +653,16 @@ private fun ArcadeHoldButton(
                 )
             )
             .border(3.5.dp, if (isPressed) Color(0xFF111111) else Color(0xEEFFFFFF), CircleShape)
+            .semantics {
+                role = Role.Button
+                contentDescription = subtitle
+                // Accessibility and Compose UI tests activate the same game action.
+                onClick(label = subtitle) {
+                    onPressChanged(true)
+                    onPressChanged(false)
+                    true
+                }
+            }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -660,7 +685,10 @@ private fun ArcadeHoldButton(
                 .clip(CircleShape)
                 .background(Color.White.copy(alpha = if (isPressed) 0.5f else 0.32f))
         )
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
                 text = label,
                 color = if (isPressed) Color.Black else Color.White,
@@ -670,8 +698,12 @@ private fun ArcadeHoldButton(
             Text(
                 text = subtitle,
                 color = if (isPressed) Color.Black else Color.White.copy(alpha = 0.92f),
-                fontSize = 8.sp,
-                fontWeight = FontWeight.ExtraBold
+                fontSize = 7.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
             )
         }
     }

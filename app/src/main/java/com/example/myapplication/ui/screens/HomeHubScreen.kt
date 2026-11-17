@@ -284,7 +284,7 @@ fun HomeHubScreen(
         } else {
             // Interactive 10-World Map Filter Bar (Including World 10: The Golden World & Boss Rush!)
             LazyRow(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("world_filter_tabs"),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
             val worldTabs = listOf(
