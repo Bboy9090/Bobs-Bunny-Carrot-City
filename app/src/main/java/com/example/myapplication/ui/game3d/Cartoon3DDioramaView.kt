@@ -40,6 +40,7 @@ import com.example.myapplication.game.CartoonStageEngine
 @Composable
 fun Cartoon3DDioramaView(
     engine: CartoonStageEngine,
+    frames: DioramaFrameBridge,
     modifier: Modifier = Modifier,
     on3DUnavailable: (String) -> Unit = {}
 ) {
@@ -65,7 +66,7 @@ fun Cartoon3DDioramaView(
     var frameReady by remember(engine) { mutableStateOf(false) }
     val renderer = remember(engine) {
         CarrotCity3DRenderer(
-            engine = engine,
+            frames = frames,
             onFirstFrame = {
                 mainHandler.post { frameReady = true }
             },

@@ -3,7 +3,6 @@ package com.example.myapplication.ui.game3d
 import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
-import com.example.myapplication.game.CartoonStageEngine
 import com.example.myapplication.game.LevelBuilder
 import com.example.myapplication.model.CartoonHealthState
 import com.example.myapplication.model.EnemyKind
@@ -16,12 +15,12 @@ import kotlin.math.sin
 
 /**
  * Real-time OpenGL ES 3.0 3D Diorama renderer for Bob's Bunny: Carrot City.
- * Reads gameplay state directly from [CartoonStageEngine] while rendering
+ * Reads an immutable, atomically published [DioramaFrameSnapshot] while rendering
  * 3D geometry, directional + rim lighting, projected shadows, and an
  * articulated 3D Bob character rig.
  */
 class CarrotCity3DRenderer(
-    private val engine: CartoonStageEngine,
+    private val frames: DioramaFrameBridge,
     private val onFirstFrame: () -> Unit = {},
     private val onInitializationFailure: (String) -> Unit = {}
 ) : GLSurfaceView.Renderer {
@@ -94,7 +93,9 @@ class CarrotCity3DRenderer(
             fpsLastTimeNs = now
         }
 
-        val sky = engine.stageConfig.biome.skyTop
+        // Read exactly one published snapshot for this GL frame; never mix updates.
+        val frame = frames.snapshot()
+        val sky = frame.skyTop
         GLES30.glClearColor(
             sky.red.coerceIn(0.18f, 0.55f),
             sky.green.coerceIn(0.45f, 0.85f),
@@ -106,17 +107,17 @@ class CarrotCity3DRenderer(
         GLES30.glUseProgram(shader.programId)
         GLES30.glUniform3f(shader.lightDirLoc, 0.45f, 0.85f, 0.55f)
 
-        val playerX3d = engine.playerX * WORLD_SCALE
-        val playerY3d = (LevelBuilder.GROUND_Y - engine.playerY) * WORLD_SCALE
-        val lookAhead = if (engine.facingRight) 2.1f else -1.2f
+        val playerX3d = frame.playerX * WORLD_SCALE
+        val playerY3d = (LevelBuilder.GROUND_Y - frame.playerY) * WORLD_SCALE
+        val lookAhead = if (frame.facingRight) 2.1f else -1.2f
         val targetCamX = (playerX3d + lookAhead).coerceAtLeast(3.5f)
         val targetCamY = (playerY3d * 0.45f + 1.35f).coerceIn(1.1f, 4.5f)
 
         camX3d += (targetCamX - camX3d) * 0.12f
         camY3d += (targetCamY - camY3d) * 0.10f
 
-        val shakeX = if (engine.screenShakeTimer > 0f) sin(engine.frameTick * 2.1f) * 0.08f else 0f
-        val shakeY = if (engine.screenShakeTimer > 0f) cos(engine.frameTick * 2.7f) * 0.06f else 0f
+        val shakeX = if (frame.screenShakeTimer > 0f) sin(frame.frameTick * 2.1f) * 0.08f else 0f
+        val shakeY = if (frame.screenShakeTimer > 0f) cos(frame.frameTick * 2.7f) * 0.06f else 0f
 
         Matrix.setLookAtM(
             viewMatrix, 0,
@@ -126,17 +127,17 @@ class CarrotCity3DRenderer(
         )
         Matrix.multiplyMM(vpMatrix, 0, projMatrix, 0, viewMatrix, 0)
 
-        val t = engine.frameTick * 0.05f
+        val t = frame.frameTick * 0.05f
 
         drawDistantCarrotCitySkyline(camX3d)
         drawMidgroundDioramaProps(camX3d, t)
-        drawPlatforms3D(camX3d, t)
-        drawCarrots3D(camX3d, t)
-        drawPowerUps3D(camX3d, t)
-        drawEnemies3D(camX3d, t)
-        drawGoalSafehouse3D(t)
-        drawBob3D(playerX3d, playerY3d, t)
-        drawParticles3D()
+        drawPlatforms3D(camX3d, t, frame)
+        drawCarrots3D(camX3d, t, frame)
+        drawPowerUps3D(camX3d, t, frame)
+        drawEnemies3D(camX3d, t, frame)
+        drawGoalSafehouse3D(t, frame)
+        drawBob3D(playerX3d, playerY3d, t, frame)
+        drawParticles3D(frame)
         drawForegroundFraming(camX3d)
         if (!firstFrameReported) {
             firstFrameReported = true
@@ -203,8 +204,8 @@ class CarrotCity3DRenderer(
         }
     }
 
-    private fun drawPlatforms3D(camX: Float, t: Float) {
-        for (plat in engine.stageData.platforms) {
+    private fun drawPlatforms3D(camX: Float, t: Float, frame: DioramaFrameSnapshot) {
+        for (plat in frame.stageData.platforms) {
             val px = (plat.x + plat.width * 0.5f) * WORLD_SCALE
             val pw = plat.width * WORLD_SCALE
             if (abs(px - camX) > pw * 0.5f + 13f) continue
@@ -238,8 +239,8 @@ class CarrotCity3DRenderer(
         }
     }
 
-    private fun drawCarrots3D(camX: Float, t: Float) {
-        for ((idx, c) in engine.stageData.carrots.withIndex()) {
+    private fun drawCarrots3D(camX: Float, t: Float, frame: DioramaFrameSnapshot) {
+        for ((idx, c) in frame.stageData.carrots.withIndex()) {
             if (c.collected) continue
             val cx = c.x * WORLD_SCALE
             if (abs(cx - camX) > 12f) continue
@@ -255,8 +256,8 @@ class CarrotCity3DRenderer(
         }
     }
 
-    private fun drawPowerUps3D(camX: Float, t: Float) {
-        for (p in engine.stageData.powerUps) {
+    private fun drawPowerUps3D(camX: Float, t: Float, frame: DioramaFrameSnapshot) {
+        for (p in frame.stageData.powerUps) {
             if (p.collected) continue
             val px = p.x * WORLD_SCALE
             if (abs(px - camX) > 12f) continue
@@ -265,8 +266,8 @@ class CarrotCity3DRenderer(
         }
     }
 
-    private fun drawEnemies3D(camX: Float, t: Float) {
-        for (enemy in engine.stageData.enemies) {
+    private fun drawEnemies3D(camX: Float, t: Float, frame: DioramaFrameSnapshot) {
+        for (enemy in frame.stageData.enemies) {
             val ex = enemy.x * WORLD_SCALE
             if (abs(ex - camX) > 13f) continue
             val ey = (LevelBuilder.GROUND_Y - enemy.y) * WORLD_SCALE
@@ -298,8 +299,8 @@ class CarrotCity3DRenderer(
         }
     }
 
-    private fun drawGoalSafehouse3D(t: Float) {
-        val gx = engine.stageData.goalX * WORLD_SCALE
+    private fun drawGoalSafehouse3D(t: Float, frame: DioramaFrameSnapshot) {
+        val gx = frame.stageData.goalX * WORLD_SCALE
         drawMesh(box, gx, 0.9f, 0f, 1.8f, 1.8f, 1.6f, 1.0f, 0.84f, 0.15f)
         drawMesh(cone, gx, 2.25f, 0f, 2.2f, 1.1f, 2.0f, 1.0f, 0.45f, 0.05f, rotY = 45f)
         drawMesh(sphere, gx, 3.05f + sin(t * 2f) * 0.1f, 0f, 0.4f, 0.4f, 0.4f, 0.0f, 0.92f, 1.0f)
@@ -311,33 +312,33 @@ class CarrotCity3DRenderer(
      * leather aviator cap with yellow goggles, yellow scarf, orange-and-white outerwear,
      * midnight-navy pants, utility belt, gloves, and white-and-yellow footwear.
      */
-    private fun drawBob3D(bx: Float, by: Float, t: Float) {
+    private fun drawBob3D(bx: Float, by: Float, t: Float, frame: DioramaFrameSnapshot) {
         // Ground contact shadow projected beneath Bob
-        val shadowY = if (engine.isGrounded) by + 0.02f else 0.02f
+        val shadowY = if (frame.isGrounded) by + 0.02f else 0.02f
         val shadowScale = (1f - (by * 0.18f)).coerceIn(0.45f, 1f)
         drawMesh(cylinder, bx, shadowY, 0f, 0.65f * shadowScale, 0.03f, 0.65f * shadowScale, 0.04f, 0.04f, 0.08f, 0.45f)
 
-        if (engine.invulnerableTimer > 0f && (engine.frameTick / 3) % 2 == 1) return
+        if (frame.invulnerableTimer > 0f && (frame.frameTick / 3) % 2 == 1) return
 
         // Burrow Blitz 3D mound + peeking golden-cream ears
-        if (engine.isBurrowing) {
+        if (frame.isBurrowing) {
             drawMesh(sphere, bx, by + 0.16f, 0f, 0.92f, 0.42f, 0.82f, 0.36f, 0.24f, 0.16f)
             drawMesh(cylinder, bx - 0.11f, by + 0.52f, 0f, 0.11f, 0.42f, 0.08f, 0.96f, 0.84f, 0.55f, rotZ = 8f)
             drawMesh(cylinder, bx + 0.11f, by + 0.52f, 0f, 0.11f, 0.42f, 0.08f, 0.96f, 0.84f, 0.55f, rotZ = -8f)
             return
         }
 
-        val dir = if (engine.facingRight) 1f else -1f
-        val yaw = if (engine.facingRight) 22f else -22f
-        val isRunning = abs(engine.playerVx) > 40f && engine.isGrounded
-        val isDashing = engine.trollDashTimer > 0f
-        val sx = engine.squashStretchX
-        val sy = engine.squashStretchY
+        val dir = if (frame.facingRight) 1f else -1f
+        val yaw = if (frame.facingRight) 22f else -22f
+        val isRunning = abs(frame.playerVx) > 40f && frame.isGrounded
+        val isDashing = frame.trollDashTimer > 0f
+        val sx = frame.squashStretchX
+        val sy = frame.squashStretchY
 
-        val stride = if (isRunning) sin(t * 7.5f) * 32f else if (!engine.isGrounded) 18f else 0f
+        val stride = if (isRunning) sin(t * 7.5f) * 32f else if (!frame.isGrounded) 18f else 0f
         val bobBounce = if (isRunning) abs(cos(t * 7.5f)) * 0.06f else sin(t * 2.4f) * 0.025f
         val lean = if (isRunning || isDashing) -dir * 10f else 0f
-        val pancakeSy = if (engine.healthState == CartoonHealthState.PANCAKE) 0.35f else sy
+        val pancakeSy = if (frame.healthState == CartoonHealthState.PANCAKE) 0.35f else sy
 
         val baseY = by + bobBounce
 
@@ -397,8 +398,8 @@ class CarrotCity3DRenderer(
         drawMesh(cylinder, bx + dir * 0.12f + 0.08f, headY + 0.17f, 0.18f, 0.13f, 0.08f, 0.13f, 1.0f, 0.84f, 0.0f, rotX = 90f)
 
         // 8. Expressive Tall Ears (Helicopter Rotor Spin or Dynamic Tilt)
-        if (engine.isHelicopterGliding || engine.isShowingDontLookDown) {
-            val rotorYaw = (engine.earSpinAngle) % 360f
+        if (frame.isHelicopterGliding || frame.isShowingDontLookDown) {
+            val rotorYaw = (frame.earSpinAngle) % 360f
             drawMesh(box, bx, headY + 0.36f, 0f, 0.88f, 0.09f, 0.16f, 0.96f, 0.84f, 0.55f, rotY = rotorYaw)
         } else {
             val earTilt = if (isRunning) dir * 24f else sin(t * 2f) * 5f
@@ -407,8 +408,8 @@ class CarrotCity3DRenderer(
         }
     }
 
-    private fun drawParticles3D() {
-        for (p in engine.particles) {
+    private fun drawParticles3D(frame: DioramaFrameSnapshot) {
+        for (p in frame.particles) {
             val px = p.x * WORLD_SCALE
             val py = (LevelBuilder.GROUND_Y - p.y) * WORLD_SCALE
             drawMesh(sphere, px, py, 0.15f, 0.14f, 0.14f, 0.14f, p.color.red, p.color.green, p.color.blue, p.alpha.coerceIn(0f, 1f))

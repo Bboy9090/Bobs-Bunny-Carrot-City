@@ -65,6 +65,7 @@ import com.example.myapplication.data.PlayerProfileState
 import com.example.myapplication.game.CartoonStageEngine
 import com.example.myapplication.model.GameCatalog
 import com.example.myapplication.ui.game3d.Cartoon3DDioramaView
+import com.example.myapplication.ui.game3d.DioramaFrameBridge
 import com.example.myapplication.model.StageConfig
 import com.example.myapplication.ui.game.CartoonStageCanvas
 
@@ -118,18 +119,24 @@ fun GamePlayScreen(
         )
     }
 
+    // This bridge belongs to the engine attempt, not a composable renderer mount.
+    // The 2D fallback and GL view share the same gameplay simulation.
+    val dioramaFrames = remember(engine) { DioramaFrameBridge(engine) }
+
     LaunchedEffect(Unit) {
         runCatching { focusRequester.requestFocus() }
     }
 
     // 60 FPS Game Loop
-    LaunchedEffect(engine, isPaused) {
+    LaunchedEffect(engine, isPaused, use3DDiorama) {
+        if (use3DDiorama) dioramaFrames.publish(engine)
         var lastFrameNanos = withFrameNanos { it }
         while (!isPaused && !engine.isStageCleared && !engine.isStageFailed) {
             val now = withFrameNanos { it }
             val dt = ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0.001f, 0.04f)
             lastFrameNanos = now
             engine.stepFrame(dt)
+            if (use3DDiorama) dioramaFrames.publish(engine)
         }
     }
 
@@ -195,7 +202,7 @@ fun GamePlayScreen(
     ) {
         // 1. Live 3D Diorama (W1-1 Vertical Slice) or 2.5D Cartoon Stage Canvas
         if (use3DDiorama) {
-            Cartoon3DDioramaView(engine = engine, on3DUnavailable = {
+            Cartoon3DDioramaView(engine = engine, frames = dioramaFrames, on3DUnavailable = {
                 // Retain the same gameplay state and return to the 2D renderer.
                 use3DDiorama = false
             })
