@@ -192,8 +192,15 @@ class CarrotCity3DRenderer(
                 // Stylized 3D Carrot City townhouse
                 drawMesh(box, mx, 1.2f, -5.2f, 2.2f, 2.6f, 1.8f, 0.96f, 0.88f, 0.72f)
                 drawMesh(cone, mx, 2.95f, -5.2f, 2.7f, 1.1f, 2.3f, 0.92f, 0.35f, 0.14f, rotY = 45f)
-                // Warm lit window
-                drawMesh(box, mx, 1.4f, -4.28f, 0.7f, 0.7f, 0.1f, 1.0f, 0.88f, 0.35f)
+                // Warm storefront and readable lit windows along the avenue.
+                // Cheap geometric trim keeps the retro 3D look without textures.
+                drawMesh(box, mx, 0.18f, -4.27f, 0.84f, 0.82f, 0.08f, 0.23f, 0.31f, 0.46f)
+                drawMesh(box, mx, 2.06f, -4.25f, 1.55f, 0.12f, 0.12f, 0.70f, 0.39f, 0.20f)
+                for (window in -1..1 step 2) {
+                    val wx = mx + window * 0.48f
+                    drawMesh(box, wx, 1.45f, -4.27f, 0.42f, 0.58f, 0.09f, 1.0f, 0.82f, 0.36f)
+                    drawMesh(box, wx, 1.45f, -4.18f, 0.045f, 0.60f, 0.06f, 0.37f, 0.22f, 0.15f)
+                }
             } else {
                 // Layered 3D N64 pine/forest tree
                 drawMesh(cylinder, mx, 0.7f, -4.4f, 0.36f, 1.8f, 0.36f, 0.45f, 0.28f, 0.15f)
@@ -354,6 +361,9 @@ class CarrotCity3DRenderer(
         drawMesh(box, legRX + dir * 0.04f, baseY + 0.10f * pancakeSy, -0.05f, 0.26f * sx, 0.14f * pancakeSy, 0.18f, 1.0f, 1.0f, 1.0f, rotZ = -stride * 0.5f * dir)
         drawMesh(box, legRX + dir * 0.04f, baseY + 0.04f * pancakeSy, -0.05f, 0.27f * sx, 0.05f * pancakeSy, 0.19f, 1.0f, 0.84f, 0.0f)
 
+        // Cream tail has its own readable silhouette at sprint and idle.
+        drawMesh(sphere, bx - dir * 0.32f, baseY + 0.74f * pancakeSy, -0.24f, 0.24f * sx, 0.25f * pancakeSy, 0.24f, 0.98f, 0.94f, 0.78f)
+
         // 2. Utility Belt + Gold Buckle
         val waistY = baseY + 0.62f * pancakeSy
         drawMesh(cylinder, bx, waistY, 0f, 0.38f * sx, 0.10f * pancakeSy, 0.30f, 0.30f, 0.20f, 0.18f, rotY = yaw)
@@ -363,6 +373,9 @@ class CarrotCity3DRenderer(
         val torsoY = baseY + 0.88f * pancakeSy
         drawMesh(cylinder, bx, torsoY, 0f, 0.42f * sx, 0.48f * pancakeSy, 0.32f, 1.0f, 0.43f, 0.0f, rotZ = lean, rotY = yaw)
         drawMesh(box, bx + dir * 0.14f, torsoY, 0.10f, 0.16f * sx, 0.40f * pancakeSy, 0.18f, 1.0f, 0.98f, 0.95f, rotZ = lean, rotY = yaw)
+        // Jacket zip and hem establish orange/white layering at handheld scale.
+        drawMesh(box, bx + dir * 0.12f, torsoY, 0.235f, 0.035f, 0.31f * pancakeSy, 0.03f, 0.24f, 0.18f, 0.17f, rotZ = lean)
+        drawMesh(box, bx, torsoY - 0.27f * pancakeSy, 0.13f, 0.66f * sx, 0.065f, 0.27f, 0.97f, 0.97f, 0.94f)
 
         // 4. Articulated Arms + White Cartoon Gloves
         val armSwing = if (isRunning) sin(t * 7.5f) * 26f else -10f
@@ -370,32 +383,49 @@ class CarrotCity3DRenderer(
         drawMesh(sphere, bx - dir * 0.26f, torsoY - 0.22f, 0.18f, 0.16f, 0.16f, 0.16f, 1.0f, 1.0f, 1.0f)
         drawMesh(cylinder, bx + dir * 0.24f, torsoY - 0.04f, -0.16f, 0.12f, 0.36f * pancakeSy, 0.12f, 1.0f, 0.43f, 0.0f, rotZ = armSwing)
         drawMesh(sphere, bx + dir * 0.26f, torsoY - 0.22f, -0.18f, 0.16f, 0.16f, 0.16f, 1.0f, 1.0f, 1.0f)
+        // Dark cuffs and tiny glove knuckles communicate articulation.
+        drawMesh(cylinder, bx - dir * 0.25f, torsoY - 0.14f, 0.17f, 0.14f, 0.065f, 0.14f, 0.13f, 0.18f, 0.29f)
+        drawMesh(cylinder, bx + dir * 0.25f, torsoY - 0.14f, -0.17f, 0.14f, 0.065f, 0.14f, 0.13f, 0.18f, 0.29f)
 
         // 5. Dynamic Fluttering Yellow Scarf
         val neckY = baseY + 1.13f * pancakeSy
         drawMesh(cylinder, bx, neckY, 0f, 0.34f * sx, 0.11f * pancakeSy, 0.32f, 1.0f, 0.84f, 0.0f, rotY = yaw)
         val scarfWave = sin(t * 4.5f) * 10f
         drawMesh(box, bx - dir * 0.28f, neckY - 0.04f, -0.05f, 0.38f, 0.09f, 0.14f, 1.0f, 0.65f, 0.0f, rotZ = scarfWave + dir * 18f)
+        drawMesh(box, bx - dir * 0.48f, neckY - 0.12f + sin(t * 5.2f) * 0.035f, -0.08f, 0.30f, 0.075f, 0.12f, 1.0f, 0.75f, 0.10f, rotZ = scarfWave - dir * 9f)
 
         // 6. Golden-Cream Head + Warm-White Muzzle + Expressive Blue Eyes
         val headY = baseY + 1.38f * pancakeSy
         drawMesh(sphere, bx, headY, 0f, 0.46f * sx, 0.44f * pancakeSy, 0.44f, 0.96f, 0.84f, 0.55f, rotY = yaw)
         // Warm-white muzzle
         drawMesh(sphere, bx + dir * 0.18f, headY - 0.07f, 0.14f, 0.26f, 0.18f, 0.24f, 1.0f, 0.98f, 0.95f)
+        // Two white cheek lobes and a smiling muzzle bring back Bob's expression.
+        drawMesh(sphere, bx + dir * 0.13f - 0.09f, headY - 0.14f, 0.37f, 0.16f, 0.12f, 0.12f, 0.98f, 0.97f, 0.93f)
+        drawMesh(sphere, bx + dir * 0.13f + 0.09f, headY - 0.14f, 0.37f, 0.16f, 0.12f, 0.12f, 0.98f, 0.97f, 0.93f)
+        drawMesh(box, bx + dir * 0.17f, headY - 0.23f, 0.49f, 0.12f, 0.055f, 0.035f, 0.35f, 0.23f, 0.23f)
+        drawMesh(box, bx + dir * 0.16f, headY - 0.28f, 0.47f, 0.11f, 0.10f, 0.04f, 1.0f, 1.0f, 0.96f)
         // Pink rabbit nose
-        drawMesh(sphere, bx + dir * 0.28f, headY - 0.02f, 0.20f, 0.08f, 0.06f, 0.08f, 1.0f, 0.25f, 0.51f)
+        drawMesh(sphere, bx + dir * 0.28f, headY - 0.02f, 0.46f, 0.08f, 0.06f, 0.08f, 1.0f, 0.25f, 0.51f)
 
         // Expressive Blue Eyes
-        val eyeZ = 0.20f
+        val eyeZ = 0.38f
         drawMesh(sphere, bx + dir * 0.10f - 0.08f, headY + 0.04f, eyeZ, 0.11f, 0.14f, 0.08f, 1f, 1f, 1f)
         drawMesh(sphere, bx + dir * 0.10f + 0.08f, headY + 0.04f, eyeZ, 0.11f, 0.14f, 0.08f, 1f, 1f, 1f)
         drawMesh(sphere, bx + dir * 0.12f - 0.08f, headY + 0.04f, eyeZ + 0.03f, 0.065f, 0.085f, 0.05f, 0.12f, 0.53f, 0.90f)
         drawMesh(sphere, bx + dir * 0.12f + 0.08f, headY + 0.04f, eyeZ + 0.03f, 0.065f, 0.085f, 0.05f, 0.12f, 0.53f, 0.90f)
+        // Small eye catches read clearly even in landscape play.
+        drawMesh(sphere, bx + dir * 0.13f - 0.08f, headY + 0.085f, eyeZ + 0.072f, 0.025f, 0.033f, 0.018f, 1.0f, 1.0f, 1.0f)
+        drawMesh(sphere, bx + dir * 0.13f + 0.08f, headY + 0.085f, eyeZ + 0.072f, 0.025f, 0.033f, 0.018f, 1.0f, 1.0f, 1.0f)
 
         // 7. Leather Aviator Cap + Yellow Goggles
         drawMesh(sphere, bx, headY + 0.10f, 0f, 0.48f * sx, 0.30f * pancakeSy, 0.46f, 0.36f, 0.25f, 0.22f)
-        drawMesh(cylinder, bx + dir * 0.12f - 0.08f, headY + 0.17f, 0.18f, 0.13f, 0.08f, 0.13f, 1.0f, 0.84f, 0.0f, rotX = 90f)
-        drawMesh(cylinder, bx + dir * 0.12f + 0.08f, headY + 0.17f, 0.18f, 0.13f, 0.08f, 0.13f, 1.0f, 0.84f, 0.0f, rotX = 90f)
+        // Goggles have an exposed strap, metallic frames and cool glass centers.
+        drawMesh(box, bx, headY + 0.17f, 0.29f, 0.66f, 0.08f, 0.07f, 0.27f, 0.19f, 0.15f)
+        for (lens in -1..1 step 2) {
+            val lx = bx + dir * 0.12f + lens * 0.08f
+            drawMesh(cylinder, lx, headY + 0.17f, 0.37f, 0.13f, 0.065f, 0.13f, 1.0f, 0.84f, 0.0f, rotX = 90f)
+            drawMesh(sphere, lx, headY + 0.17f, 0.455f, 0.083f, 0.07f, 0.022f, 0.34f, 0.77f, 0.90f)
+        }
 
         // 8. Expressive Tall Ears (Helicopter Rotor Spin or Dynamic Tilt)
         if (frame.isHelicopterGliding || frame.isShowingDontLookDown) {
@@ -405,6 +435,9 @@ class CarrotCity3DRenderer(
             val earTilt = if (isRunning) dir * 24f else sin(t * 2f) * 5f
             drawMesh(cylinder, bx - 0.11f, headY + 0.48f, -0.02f, 0.11f, 0.54f, 0.09f, 0.96f, 0.84f, 0.55f, rotZ = earTilt + 6f)
             drawMesh(cylinder, bx + 0.11f, headY + 0.48f, 0.02f, 0.11f, 0.54f, 0.09f, 0.96f, 0.84f, 0.55f, rotZ = earTilt - 6f)
+            // Blush-pink ear interiors follow the same animation angle.
+            drawMesh(cylinder, bx - 0.11f, headY + 0.48f, 0.082f, 0.058f, 0.43f, 0.023f, 0.94f, 0.55f, 0.58f, rotZ = earTilt + 6f)
+            drawMesh(cylinder, bx + 0.11f, headY + 0.48f, 0.122f, 0.058f, 0.43f, 0.023f, 0.94f, 0.55f, 0.58f, rotZ = earTilt - 6f)
         }
     }
 
