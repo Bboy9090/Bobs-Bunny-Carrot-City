@@ -4,8 +4,20 @@ set -euo pipefail
 # Run inside Android emulator runner while adb is attached. Capture diagnostic
 # evidence even when test assertions fail; never override the test exit status.
 set +e
-./gradlew connectedDebugAndroidTest --console=plain
-test_status=$?
+# Run the visual qualification alone first. Other tests may change the same
+# Activity/GLSurfaceView lifecycle; their first-frame receipts must not be
+# mistaken for evidence that this test actually rendered W1-1.
+./gradlew connectedDebugAndroidTest --console=plain \
+  '-Pandroid.testInstrumentationRunnerArguments.class=com.example.myapplication.ExampleInstrumentedTest#w1One_visualCaptureWaitsForFirst3dDraw'
+visual_status=$?
+if [ "$visual_status" -eq 0 ]; then
+  # Still qualify the complete normal Android instrumentation suite.
+  ./gradlew connectedDebugAndroidTest --console=plain
+  test_status=$?
+else
+  echo "Focused W1-1 test failed (exit $visual_status); preserving its diagnostic screenshot."
+  test_status=$visual_status
+fi
 set -e
 
 output_dir="reports/android-emulator"
