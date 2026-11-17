@@ -91,6 +91,8 @@ fun Cartoon3DDioramaView(
     // Some EGL implementations never deliver onSurfaceCreated, even though
     // ActivityManager advertised GLES3. Never strand players on a loader.
     LaunchedEffect(engine, glView) {
+        Log.i("BobsBunnyDiorama", "3D view mounted, advertised GLES=0x" +
+            reportedGlesVersion.toString(16))
         delay(15_000L)
         if (!frameReady) {
             Log.e("BobsBunnyDiorama", "No completed GLES3 draw after 15 seconds; using 2D fallback")

@@ -166,6 +166,20 @@ class ExampleInstrumentedTest {
             "\nsampledColorClasses=" + colors.size + "\n"
         context.openFileOutput("bobs_w1_1_render_qa.txt", android.content.Context.MODE_PRIVATE)
             .bufferedWriter().use { it.write(diagnostics) }
+        android.util.Log.i("BobsBunnyDiorama", "W1-1 hosted QA: " +
+            diagnostics.replace("\n", " | "))
+
+        // Gradle uninstalls instrumented applications on the hosted runner,
+        // so private app files cannot be fetched afterward via adb run-as.
+        // Shell screencap writes an actual device screenshot into shared
+        // Downloads which remains available for GitHub artifact upload.
+        val screenshotFd = InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand("screencap -p /sdcard/Download/bobs_w1_1_visual_qa.png")
+        screenshotFd?.use { fd ->
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { stream ->
+                stream.readBytes() // wait for the shell command to complete
+            }
+        }
 
         assertTrue("GLES3 did not complete first W1-1 frame: " + diagnostics, rendered3D)
         assertTrue("W1-1 3D screenshot unavailable: " + diagnostics, saved)

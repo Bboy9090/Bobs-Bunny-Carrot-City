@@ -62,10 +62,12 @@ class CarrotCity3DRenderer(
     private var fpsLastTimeNs = System.nanoTime()
     private var initialized = false
     private var firstFrameReported = false
+    private var firstDrawStartedLogged = false
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         initialized = false
         firstFrameReported = false
+        firstDrawStartedLogged = false
         try {
             Log.i("BobsBunnyDiorama", "onSurfaceCreated GLES version=" +
                 GLES30.glGetString(GLES30.GL_VERSION) + " renderer=" +
@@ -86,12 +88,17 @@ class CarrotCity3DRenderer(
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        Log.i("BobsBunnyDiorama", "onSurfaceChanged " + width + "x" + height)
         GLES30.glViewport(0, 0, width, height)
         val aspect = width.toFloat() / height.coerceAtLeast(1).toFloat()
         Matrix.perspectiveM(projMatrix, 0, 42f, aspect, 0.5f, 90f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        if (!firstDrawStartedLogged) {
+            firstDrawStartedLogged = true
+            Log.i("BobsBunnyDiorama", "onDrawFrame entered; initialized=" + initialized)
+        }
         if (!initialized) {
             GLES30.glClearColor(0.07f, 0.12f, 0.22f, 1f)
             GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
@@ -153,7 +160,8 @@ class CarrotCity3DRenderer(
         drawForegroundFraming(camX3d)
         if (!firstFrameReported) {
             firstFrameReported = true
-            completedFirstFrames.incrementAndGet()
+            val total = completedFirstFrames.incrementAndGet()
+            Log.i("BobsBunnyDiorama", "First GLES3 scene frame complete; receipt=" + total)
             onFirstFrame()
         }
     }

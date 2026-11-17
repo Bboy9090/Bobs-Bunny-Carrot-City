@@ -16,14 +16,15 @@ adb shell getprop ro.opengles.version | tr -d '\r' > "$output_dir/device-gles-ve
 adb shell getprop ro.hardware | tr -d '\r' > "$output_dir/emulator-hardware.txt" || true
 adb logcat -d -s BobsBunnyDiorama:I > "$output_dir/diorama-gl-logcat.txt" || true
 
-# Development package is debuggable; run-as reads only its dedicated QA files.
-if adb exec-out run-as com.example.myapplication cat files/bobs_w1_1_render_qa.txt > "$output_dir/w1-1-render-diagnostics.txt"; then
-  cat "$output_dir/w1-1-render-diagnostics.txt"
-else
-  echo "Render test did not produce the diagnostics receipt" > "$output_dir/w1-1-render-diagnostics.txt"
+# The test emits its first-frame receipt to logcat. Gradle uninstalls the
+# debuggable app after instrumentation, so private run-as files are gone.
+# The test also saves a real device screenshot to shared Downloads.
+grep 'W1-1 hosted QA:' "$output_dir/diorama-gl-logcat.txt" > "$output_dir/w1-1-render-diagnostics.txt" || true
+if test ! -s "$output_dir/w1-1-render-diagnostics.txt"; then
+  echo "Render test did not produce a logged diagnostic receipt" > "$output_dir/w1-1-render-diagnostics.txt"
 fi
 
-if adb exec-out run-as com.example.myapplication cat files/bobs_w1_1_visual_qa.png > "$output_dir/w1-1-device-capture.png"; then
+if adb pull /sdcard/Download/bobs_w1_1_visual_qa.png "$output_dir/w1-1-device-capture.png"; then
   if test -s "$output_dir/w1-1-device-capture.png"; then
     file "$output_dir/w1-1-device-capture.png" | tee "$output_dir/image-info.txt"
     sha256sum "$output_dir/w1-1-device-capture.png" | tee "$output_dir/SHA256SUMS.txt"
