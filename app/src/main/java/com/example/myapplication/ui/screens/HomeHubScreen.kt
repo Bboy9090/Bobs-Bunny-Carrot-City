@@ -410,6 +410,7 @@ fun HomeHubScreen(
 
                         Button(
                             onClick = { onSelectStage(stage) },
+                            modifier = Modifier.testTag("stage_play_${stage.code}"),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = when {
                                     stage.isBossRush -> Color(0xFFE040FB)
