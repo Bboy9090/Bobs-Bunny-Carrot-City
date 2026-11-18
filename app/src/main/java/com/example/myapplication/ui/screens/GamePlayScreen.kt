@@ -78,6 +78,12 @@ fun GamePlayScreen(
     onStageCompleted: (carrotsEarned: Int, shardsEarned: Int, starsEarned: Int, clearTimeSeconds: Float) -> Unit,
     onExitToMenu: () -> Unit
 ) {
+    // One-shot entry receipt: distinguish an uncommitted composition from a
+    // failed navigation or a GL surface that never mounted on slow emulators.
+    remember(stageConfig.code) {
+        Log.i("BobsBunnyDiorama", "GamePlayScreen entry: " + stageConfig.code)
+        true
+    }
     val view = LocalView.current
     val focusRequester = remember { FocusRequester() }
     val activeHero = profile.selectedHero
@@ -110,6 +116,8 @@ fun GamePlayScreen(
     var rewardCommitted by remember(stageConfig.id, attemptKey) { mutableStateOf(false) }
 
     val engine = remember(stageConfig, attemptKey, activeHero.id, activeMutator.id) {
+        val startedNanos = android.os.SystemClock.elapsedRealtimeNanos()
+        Log.i("BobsBunnyDiorama", "Stage engine init started: " + stageConfig.code)
         CartoonStageEngine(
             stageConfig = stageConfig,
             selectedHero = activeHero,
@@ -117,12 +125,20 @@ fun GamePlayScreen(
             equippedBadgeId = badge.id,
             trailColor = trail.primaryColor,
             soundEngine = soundEngine
-        )
+        ).also {
+            Log.i("BobsBunnyDiorama", "Stage engine init completed in " +
+                ((android.os.SystemClock.elapsedRealtimeNanos() - startedNanos) / 1_000_000L) + "ms")
+        }
     }
 
     // This bridge belongs to the engine attempt, not a composable renderer mount.
     // The 2D fallback and GL view share the same gameplay simulation.
-    val dioramaFrames = remember(engine) { DioramaFrameBridge(engine) }
+    val dioramaFrames = remember(engine) {
+        Log.i("BobsBunnyDiorama", "Diorama snapshot initial capture started")
+        DioramaFrameBridge(engine).also {
+            Log.i("BobsBunnyDiorama", "Diorama snapshot initial capture completed")
+        }
+    }
     LaunchedEffect(engine) {
         Log.i("BobsBunnyDiorama", "GamePlayScreen composition mounted: " + stageConfig.code)
     }
