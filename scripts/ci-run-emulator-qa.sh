@@ -36,7 +36,10 @@ adb devices -l | tee "$output_dir/adb-devices.txt" || true
 adb shell getprop ro.build.version.sdk | tr -d '\r' > "$output_dir/android-api-level.txt" || true
 adb shell getprop ro.opengles.version | tr -d '\r' > "$output_dir/device-gles-version.txt" || true
 adb shell getprop ro.hardware | tr -d '\r' > "$output_dir/emulator-hardware.txt" || true
-adb logcat -d -s BobsBunnyDiorama:I > "$output_dir/diorama-gl-logcat.txt" || true
+adb logcat -d -v threadtime -s BobsBunnyDiorama:I > "$output_dir/diorama-gl-logcat.txt" || true
+# The failed screenshot can show the prior screen, so retain useful Activity
+# transition evidence alongside GL lifecycle and first-frame receipts.
+adb shell dumpsys activity activities > "$output_dir/activity-state.txt" || true
 
 # The test emits its first-frame receipt to logcat. Gradle uninstalls the
 # debuggable app after instrumentation, so private run-as files are gone.
