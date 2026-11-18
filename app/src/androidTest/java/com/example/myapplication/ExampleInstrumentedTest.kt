@@ -122,7 +122,9 @@ class ExampleInstrumentedTest {
         composeRule.onNodeWithText("W1: Carrot City", substring = true).performClick()
         composeRule.onNodeWithTag("stage_roster_list")
             .performScrollToNode(hasText("W1-1", substring = true))
-        composeRule.onAllNodesWithText("PLAY").onFirst().performClick()
+        // Target the intended stage, never the first generic PLAY button. A
+        // different stage launch would produce a false-negative GLES receipt.
+        composeRule.onNodeWithTag("stage_play_W1-1").performClick()
         // Do NOT request Compose idleness after launching the continuous
         // 60-FPS game loop: Espresso can time out on normal recompositions.
         // A standalone run starts at zero and requires a new renderer receipt,
@@ -141,6 +143,7 @@ class ExampleInstrumentedTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val manager = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
         val reportedGles = manager?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
+        val activeActivity = composeRule.activity.javaClass.simpleName
 
         // Preserve screenshot AND capability evidence even if the 3D gate
         // fails, so a hosted emulator limitation is not silently misdiagnosed.
