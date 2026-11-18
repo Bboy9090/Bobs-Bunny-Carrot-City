@@ -28,6 +28,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -122,6 +123,9 @@ fun GamePlayScreen(
     // This bridge belongs to the engine attempt, not a composable renderer mount.
     // The 2D fallback and GL view share the same gameplay simulation.
     val dioramaFrames = remember(engine) { DioramaFrameBridge(engine) }
+    LaunchedEffect(engine) {
+        Log.i("BobsBunnyDiorama", "GamePlayScreen composition mounted: " + stageConfig.code)
+    }
 
     LaunchedEffect(Unit) {
         runCatching { focusRequester.requestFocus() }
