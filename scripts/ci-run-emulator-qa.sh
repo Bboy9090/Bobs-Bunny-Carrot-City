@@ -4,6 +4,16 @@ set -euo pipefail
 # Run inside Android emulator runner while adb is attached. Capture diagnostic
 # evidence even when test assertions fail; never override the test exit status.
 set +e
+# Reduce software-GL framebuffer pressure on the hosted emulator and record
+# the effective dimensions. Android may otherwise spend minutes rasterizing
+# the default 2400x1080 landscape frame while Quickstep/Launcher ANRs.
+# This is a documented hosted-test viewport, not a change to the player app.
+mkdir -p reports/android-emulator
+adb shell wm size 1600x900 || true
+adb shell wm density 240 || true
+adb shell wm size > reports/android-emulator/display-size.txt || true
+adb shell wm density > reports/android-emulator/display-density.txt || true
+
 # Run the visual qualification alone first. Other tests may change the same
 # Activity/GLSurfaceView lifecycle; their first-frame receipts must not be
 # mistaken for evidence that this test actually rendered W1-1.
