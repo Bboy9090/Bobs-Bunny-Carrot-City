@@ -125,6 +125,12 @@ class ExampleInstrumentedTest {
         // Target the intended stage, never the first generic PLAY button. A
         // different stage launch would produce a false-negative GLES receipt.
         composeRule.onNodeWithTag("stage_play_W1-1").performClick()
+        // Commit the destination change through one deterministic Compose frame,
+        // without Espresso waiting for the intentionally continuous 60-FPS loop.
+        // OpenGL has its own render thread and still must independently produce
+        // the first-frame receipt; advancing Compose does not fake GLES output.
+        composeRule.mainClock.autoAdvance = false
+        composeRule.mainClock.advanceTimeBy(250)
         // Do NOT request Compose idleness after launching the continuous
         // 60-FPS game loop: Espresso can time out on normal recompositions.
         // A standalone run starts at zero and requires a new renderer receipt,
