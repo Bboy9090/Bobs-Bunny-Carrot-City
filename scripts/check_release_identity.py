@@ -13,23 +13,23 @@ def inspect(root: Path, profile: str) -> list[str]:
     problems = []
     gradle = (root / "app/build.gradle.kts").read_text(encoding="utf-8")
     catalog = (root / "gradle/libs.versions.toml").read_text(encoding="utf-8")
-    identity = re.search(r'\\bapplicationId\\s*=\\s*"([^"]+)"', gradle)
-    namespace = re.search(r'\\bnamespace\\s*=\\s*"([^"]+)"', gradle)
+    identity = re.search(r'\bapplicationId\s*=\s*"([^"]+)"', gradle)
+    namespace = re.search(r'\bnamespace\s*=\s*"([^"]+)"', gradle)
     if not identity or not namespace:
         return ["Missing explicit applicationId or namespace"]
     app_id, package_ns = identity.group(1), namespace.group(1)
-    if not re.fullmatch(r'[A-Za-z_][\\w]*(?:\\.[A-Za-z_][\\w]*)+', app_id):
+    if not re.fullmatch(r'[A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)+', app_id):
         problems.append("Invalid Android applicationId syntax")
-    if not re.fullmatch(r'[A-Za-z_][\\w]*(?:\\.[A-Za-z_][\\w]*)+', package_ns):
+    if not re.fullmatch(r'[A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)+', package_ns):
         problems.append("Invalid Android namespace syntax")
     for label in ("minSdk", "targetSdk"):
-        if not re.search(rf'\\b{label}\\s*=\\s*\\d+', gradle):
+        if not re.search(rf'\b{label}\s*=\s*\d+', gradle):
             problems.append(f"Missing numeric {label}")
-    min_sdk = re.search(r'\\bminSdk\\s*=\\s*(\\d+)', gradle)
-    target_sdk = re.search(r'\\btargetSdk\\s*=\\s*(\\d+)', gradle)
+    min_sdk = re.search(r'\bminSdk\s*=\s*(\d+)', gradle)
+    target_sdk = re.search(r'\btargetSdk\s*=\s*(\d+)', gradle)
     if min_sdk and target_sdk and int(min_sdk.group(1)) > int(target_sdk.group(1)):
         problems.append("minSdk exceeds targetSdk")
-    if re.search(r'(?m)^\\s*(?:firebaseAi|[\\w-]*firebase[\\w-]*)\\s*=\\s*"[^"]*\\+', catalog, re.I):
+    if re.search(r'(?m)^\s*(?:firebaseAi|[\w-]*firebase[\w-]*)\s*=\s*"[^"]*\+', catalog, re.I):
         problems.append("Unpinned Firebase dependency version")
 
     # Development builds may use a temporary applicationId but must never
