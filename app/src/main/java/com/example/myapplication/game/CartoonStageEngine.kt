@@ -24,6 +24,7 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.random.Random
+import java.util.ArrayDeque
 
 class CartoonStageEngine(
     val stageConfig: StageConfig,
@@ -34,6 +35,10 @@ class CartoonStageEngine(
     private val soundEngine: CartoonSoundEngine
 ) {
     val stageData: BuiltStageData = LevelBuilder.buildStage(stageConfig)
+    private val spawnedRainbowBridges = ArrayDeque<PlatformEntity>()
+    private val maxTemporaryBridges = 14
+    private val maxParticles = 240
+    private val maxFloatingTexts = 36
 
     // Player physics state
     var playerX by mutableFloatStateOf(160f)
@@ -304,15 +309,23 @@ class CartoonStageEngine(
 
     private fun spawnRainbowBridgeBeneathPlayer() {
         val bridgeY = (playerY + 6f).coerceIn(220f, LevelBuilder.GROUND_Y - 10f)
-        stageData.platforms.add(
-            PlatformEntity(
-                x = playerX - 60f,
-                y = bridgeY,
-                width = 240f,
-                height = 20f,
-                kind = PlatformKind.RAINBOW_BRIDGE
-            )
+        val bridge = PlatformEntity(
+            x = playerX - 60f,
+            y = bridgeY,
+            width = 240f,
+            height = 20f,
+            kind = PlatformKind.RAINBOW_BRIDGE
         )
+        stageData.platforms.add(bridge)
+        spawnedRainbowBridges.addLast(bridge)
+        // Temporary power-up geometry is transient, not an unbounded stage
+        // mutation. Remove oldest generated bridges by reference, preserving
+        // all canonical platforms and static rainbow bridges.
+        while (spawnedRainbowBridges.size > maxTemporaryBridges) {
+            val oldest = spawnedRainbowBridges.removeFirst()
+            val index = stageData.platforms.indexOfFirst { it === oldest }
+            if (index >= 0) stageData.platforms.removeAt(index)
+        }
         spawnFloatingText("RAINBOW BRIDGE! 🌈", playerX, bridgeY - 45f, Color(0xFFE040FB))
     }
 
@@ -706,7 +719,7 @@ class CartoonStageEngine(
             p.alpha -= dt * 1.6f
             if (p.alpha <= 0f) pIter.remove()
         }
-        if (abs(playerVx) > 220f && frameTick % 4 == 0) {
+        if (abs(playerVx) > 220f && frameTick % 4 == 0 && particles.size < maxParticles) {
             particles.add(
                 ParticleDot(
                     x = playerX - (if (facingRight) 20f else -20f),
@@ -982,11 +995,13 @@ class CartoonStageEngine(
     }
 
     private fun spawnFloatingText(text: String, x: Float, y: Float, color: Color) {
+        if (floatingTexts.size >= maxFloatingTexts) floatingTexts.removeAt(0)
         floatingTexts.add(FloatingCartoonText(nextTextId++, text, x, y, color))
     }
 
     private fun spawnDustParticles(x: Float, y: Float, count: Int, color: Color) {
-        repeat(count) {
+        // A crowded boss fight must not allocate infinite Compose particles.
+        repeat(count.coerceIn(0, (maxParticles - particles.size).coerceAtLeast(0))) {
             particles.add(
                 ParticleDot(
                     x = x + Random.nextFloat() * 24f - 12f,
