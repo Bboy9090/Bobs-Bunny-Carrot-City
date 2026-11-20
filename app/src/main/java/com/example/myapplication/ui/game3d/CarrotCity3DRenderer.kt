@@ -173,7 +173,7 @@ class CarrotCity3DRenderer(
         drawEnemies3D(camX3d, t, frame)
         drawGoalSafehouse3D(camX3d, t, frame)
         drawBob3D(playerX3d, playerY3d, t, frame)
-        drawParticles3D(frame)
+        drawParticles3D(camX3d, frame)
         drawForegroundFraming(camX3d)
         if (!firstFrameReported) {
             firstFrameReported = true
@@ -488,16 +488,21 @@ class CarrotCity3DRenderer(
         }
     }
 
-    private fun drawParticles3D(frame: DioramaFrameSnapshot) {
+    private fun drawParticles3D(camX: Float, frame: DioramaFrameSnapshot) {
         for (p in frame.particles) {
             val px = p.x * WORLD_SCALE
+            // Do not issue GL draw calls for particles outside the camera.
+            if (abs(px - camX) > 15f) continue
             val py = (LevelBuilder.GROUND_Y - p.y) * WORLD_SCALE
             drawMesh(sphere, px, py, 0.15f, 0.14f, 0.14f, 0.14f, p.color.red, p.color.green, p.color.blue, p.alpha.coerceIn(0f, 1f))
         }
     }
 
     private fun drawForegroundFraming(camX: Float) {
-        for (i in 0..8) {
+        // Keep foreground vegetation continuous past the initial 60m of city.
+        val first = floor((camX - 15f) / 7.5f).toInt()
+        val last = ceil((camX + 15f) / 7.5f).toInt()
+        for (i in first..last) {
             val fx = i * 7.5f + 2f
             if (abs(fx - camX) > 13f) continue
             drawMesh(sphere, fx, -0.35f, 3.4f, 1.3f, 0.8f, 1.0f, 0.10f, 0.38f, 0.16f)
