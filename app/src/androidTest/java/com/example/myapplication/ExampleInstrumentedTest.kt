@@ -147,6 +147,11 @@ class ExampleInstrumentedTest {
         }
         val completedAfter = CarrotCity3DRenderer.completedFirstFrames.get()
         val rendered3D = completedAfter > completedBefore
+        // A GLES3 draw can finish while Compose's loading overlay is waiting
+        // for its next frame. Drive the Compose clock only after the GL receipt
+        // so its callback dismisses the loader before capturing the screenshot.
+        // This never increments or manufactures a native render receipt.
+        if (rendered3D) composeRule.mainClock.advanceTimeBy(250)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val manager = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
         val reportedGles = manager?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
@@ -162,11 +167,17 @@ class ExampleInstrumentedTest {
             }
         } ?: false
         val colors = mutableSetOf<Int>()
+        val sceneColors = mutableSetOf<Int>()
         if (bitmap != null) {
             for (gy in 1..10) {
                 for (gx in 1..16) {
                     val color = bitmap.getPixel(gx * (bitmap.width - 1) / 17, gy * (bitmap.height - 1) / 11)
                     colors.add(color and 0x00F0F0F0)
+                    // Isolate the central scene so colorful HUD elements do not
+                    // falsely certify a loading screen or blank 3D viewport.
+                    val sx = ((0.20f + 0.60f * gx / 17f) * (bitmap.width - 1)).toInt()
+                    val sy = ((0.35f + 0.37f * gy / 11f) * (bitmap.height - 1)).toInt()
+                    sceneColors.add(bitmap.getPixel(sx, sy) and 0x00F0F0F0)
                 }
             }
             bitmap.recycle()
@@ -178,6 +189,7 @@ class ExampleInstrumentedTest {
             "\n3dCompleted=" + rendered3D +
             "\nscreenshotSaved=" + saved +
             "\nsampledColorClasses=" + colors.size + "\n"
+            "\nsceneColorClasses=" + sceneColors.size + "\n"
         context.openFileOutput("bobs_w1_1_render_qa.txt", android.content.Context.MODE_PRIVATE)
             .bufferedWriter().use { it.write(diagnostics) }
         android.util.Log.i("BobsBunnyDiorama", "W1-1 hosted QA: " +
@@ -198,6 +210,8 @@ class ExampleInstrumentedTest {
         assertTrue("GLES3 did not complete first W1-1 frame: " + diagnostics, rendered3D)
         assertTrue("W1-1 3D screenshot unavailable: " + diagnostics, saved)
         assertTrue("W1-1 screenshot appears nearly uniform: " + diagnostics, colors.size >= 8)
+        assertTrue("W1-1 playfield still blank or obscured by its loader: " + diagnostics,
+            sceneColors.size >= 6)
     }
 
     @Test
