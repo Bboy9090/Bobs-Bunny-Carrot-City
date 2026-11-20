@@ -119,6 +119,14 @@ class CartoonStageEngine(
     var inputJumpHeld by mutableStateOf(false)
     var inputBurrowHeld by mutableStateOf(false)
 
+    /** Never carry held keyboard/controller/touch input across pause or scene exit. */
+    fun releaseHeldInputs() {
+        inputLeft = false
+        inputRight = false
+        inputJumpHeld = false
+        inputBurrowHeld = false
+    }
+
     val floatingTexts = mutableStateListOf<FloatingCartoonText>()
     val particles = mutableStateListOf<ParticleDot>()
     private var nextTextId = 1L
