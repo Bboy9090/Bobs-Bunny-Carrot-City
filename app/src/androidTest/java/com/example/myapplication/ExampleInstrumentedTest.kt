@@ -188,7 +188,7 @@ class ExampleInstrumentedTest {
             "\nfirstFrameAfter=" + completedAfter +
             "\n3dCompleted=" + rendered3D +
             "\nscreenshotSaved=" + saved +
-            "\nsampledColorClasses=" + colors.size + "\n"
+            "\nsampledColorClasses=" + colors.size +
             "\nsceneColorClasses=" + sceneColors.size + "\n"
         context.openFileOutput("bobs_w1_1_render_qa.txt", android.content.Context.MODE_PRIVATE)
             .bufferedWriter().use { it.write(diagnostics) }
