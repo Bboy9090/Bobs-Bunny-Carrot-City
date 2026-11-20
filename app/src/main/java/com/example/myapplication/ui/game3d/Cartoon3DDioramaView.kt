@@ -42,6 +42,7 @@ import kotlinx.coroutines.delay
 fun Cartoon3DDioramaView(
     engine: CartoonStageEngine,
     frames: DioramaFrameBridge,
+    paused: Boolean = false,
     modifier: Modifier = Modifier,
     on3DUnavailable: (String) -> Unit = {}
 ) {
@@ -86,6 +87,19 @@ fun Cartoon3DDioramaView(
             setRenderer(renderer)
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
         }
+    }
+
+    // Paused, cleared and failed stages should not burn battery by drawing
+    // identical 3D scenes at 60 FPS behind an opaque modal. Always allow the
+    // very first frame through so the readiness gate is still honest.
+    LaunchedEffect(glView, paused, frameReady) {
+        val idle = paused && frameReady
+        glView.renderMode = if (idle) {
+            GLSurfaceView.RENDERMODE_WHEN_DIRTY
+        } else {
+            GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        }
+        if (idle) glView.requestRender()
     }
 
     // Some EGL implementations never deliver onSurfaceCreated, even though
