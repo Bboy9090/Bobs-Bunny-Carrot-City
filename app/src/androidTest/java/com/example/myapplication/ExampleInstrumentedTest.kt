@@ -133,9 +133,10 @@ class ExampleInstrumentedTest {
         composeRule.mainClock.advanceTimeBy(250)
         // Do NOT request Compose idleness after launching the continuous
         // 60-FPS game loop: Espresso can time out on normal recompositions.
-        // A standalone run starts at zero and requires a new renderer receipt,
-        // which is stronger evidence than a static "3D" label on the screen.
-        assertEquals("Focused render QA must start with no prior 3D frames", 0, completedBefore)
+        // The focused run may start at zero, but the subsequent full test
+        // suite can legitimately have completed earlier GLSurfaceView draws.
+        // Only an increment beyond our pre-navigation baseline proves THIS
+        // launch rendered a fresh scene; do not assert the global count is zero.
         // No Compose semantics calls below this point; use the GL callback.
         // The other W1-1 mode-toggle test already checks the 3D UI label.
 
