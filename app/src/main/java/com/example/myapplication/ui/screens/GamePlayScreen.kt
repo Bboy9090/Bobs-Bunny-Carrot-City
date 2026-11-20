@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -143,6 +145,20 @@ fun GamePlayScreen(
         Log.i("BobsBunnyDiorama", "GamePlayScreen composition mounted: " + stageConfig.code)
     }
 
+    val heldKeys = remember(engine) { mutableSetOf<Key>() }
+    DisposableEffect(engine) {
+        onDispose {
+            heldKeys.clear()
+            engine.releaseHeldInputs()
+        }
+    }
+    LaunchedEffect(engine, isPaused) {
+        if (isPaused) {
+            heldKeys.clear()
+            engine.releaseHeldInputs()
+        }
+    }
+
     LaunchedEffect(Unit) {
         runCatching { focusRequester.requestFocus() }
     }
@@ -181,10 +197,25 @@ fun GamePlayScreen(
         modifier = Modifier
             .fillMaxSize()
             .focusRequester(focusRequester)
+            .onFocusChanged {
+                if (!it.isFocused) {
+                    heldKeys.clear()
+                    engine.releaseHeldInputs()
+                }
+            }
             .focusable()
             .onKeyEvent { event ->
                 val isDown = event.type == KeyEventType.KeyDown
-                when (event.key) {
+                // An OS/gamepad autorepeat is not a second jump, dash or drone
+                // toggle. Directional holds remain continuous until key-up.
+                val firstPress = if (isDown) heldKeys.add(event.key) else {
+                    heldKeys.remove(event.key)
+                    false
+                }
+                if (isPaused || engine.isStageCleared || engine.isStageFailed) {
+                    engine.releaseHeldInputs()
+                    false
+                } else when (event.key) {
                     Key.DirectionLeft, Key.A -> {
                         engine.inputLeft = isDown
                         true
@@ -199,21 +230,21 @@ fun GamePlayScreen(
                     }
                     Key.Spacebar, Key.DirectionUp, Key.W, Key.ButtonA -> {
                         engine.inputJumpHeld = isDown
-                        if (isDown) {
+                        if (firstPress) {
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             engine.triggerJump()
                         }
                         true
                     }
                     Key.Enter, Key.X, Key.ButtonX, Key.ButtonB -> {
-                        if (isDown) {
+                        if (firstPress) {
                             view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                             engine.triggerTrollDashOrAction()
                         }
                         true
                     }
                     Key.P, Key.ButtonY -> {
-                        if (isDown) engine.toggleSidekickDrone()
+                        if (firstPress) engine.toggleSidekickDrone()
                         true
                     }
                     else -> false
