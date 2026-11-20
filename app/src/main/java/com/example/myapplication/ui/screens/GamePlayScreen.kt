@@ -35,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -66,11 +67,13 @@ import androidx.compose.ui.unit.sp
 import com.example.myapplication.audio.CartoonSoundEngine
 import com.example.myapplication.data.PlayerProfileState
 import com.example.myapplication.game.CartoonStageEngine
+import com.example.myapplication.game.FixedStepGameClock
 import com.example.myapplication.model.GameCatalog
 import com.example.myapplication.ui.game3d.Cartoon3DDioramaView
 import com.example.myapplication.ui.game3d.DioramaFrameBridge
 import com.example.myapplication.model.StageConfig
 import com.example.myapplication.ui.game.CartoonStageCanvas
+import kotlinx.coroutines.delay
 
 @Composable
 fun GamePlayScreen(
@@ -114,6 +117,7 @@ fun GamePlayScreen(
 
     var attemptKey by remember { mutableStateOf(0) }
     var isPaused by remember { mutableStateOf(false) }
+    var fallbackNotice by remember(stageConfig.id) { mutableStateOf<String?>(null) }
     var use3DDiorama by remember(stageConfig.id) { mutableStateOf(stageConfig.code == "W1-1") }
     var rewardCommitted by remember(stageConfig.id, attemptKey) { mutableStateOf(false) }
 
@@ -152,10 +156,17 @@ fun GamePlayScreen(
             engine.releaseHeldInputs()
         }
     }
-    LaunchedEffect(engine, isPaused) {
-        if (isPaused) {
+    LaunchedEffect(engine, isPaused, engine.isStageCleared, engine.isStageFailed) {
+        if (isPaused || engine.isStageCleared || engine.isStageFailed) {
             heldKeys.clear()
             engine.releaseHeldInputs()
+        }
+    }
+
+    LaunchedEffect(fallbackNotice) {
+        if (fallbackNotice != null) {
+            delay(4500L)
+            fallbackNotice = null
         }
     }
 
@@ -163,15 +174,19 @@ fun GamePlayScreen(
         runCatching { focusRequester.requestFocus() }
     }
 
-    // 60 FPS Game Loop
+    // Deterministic 60-Hz gameplay regardless of 30/60/120-Hz displays.
+    // Avoid artificial minimum dt and bounded catch-up after blocked frames.
     LaunchedEffect(engine, isPaused, use3DDiorama) {
         if (use3DDiorama) dioramaFrames.publish(engine)
+        val gameClock = FixedStepGameClock()
         var lastFrameNanos = withFrameNanos { it }
         while (!isPaused && !engine.isStageCleared && !engine.isStageFailed) {
             val now = withFrameNanos { it }
-            val dt = ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0.001f, 0.04f)
+            val realDt = ((now - lastFrameNanos) / 1_000_000_000f).coerceAtLeast(0f)
             lastFrameNanos = now
-            engine.stepFrame(dt)
+            gameClock.advance(realDt) { step ->
+                if (!engine.isStageCleared && !engine.isStageFailed) engine.stepFrame(step)
+            }
             if (use3DDiorama) dioramaFrames.publish(engine)
         }
     }
@@ -253,10 +268,15 @@ fun GamePlayScreen(
     ) {
         // 1. Live 3D Diorama (W1-1 Vertical Slice) or 2.5D Cartoon Stage Canvas
         if (use3DDiorama) {
-            Cartoon3DDioramaView(engine = engine, frames = dioramaFrames, on3DUnavailable = {
-                // Retain the same gameplay state and return to the 2D renderer.
-                use3DDiorama = false
-            })
+            Cartoon3DDioramaView(
+                engine = engine,
+                frames = dioramaFrames,
+                paused = isPaused || engine.isStageCleared || engine.isStageFailed,
+                on3DUnavailable = { cause ->
+                    use3DDiorama = false
+                    fallbackNotice = "3D unavailable: $cause. Classic 2D remains playable."
+                }
+            )
         } else {
             CartoonStageCanvas(
                 engine = engine,
@@ -264,6 +284,20 @@ fun GamePlayScreen(
                 hoodie = hoodie,
                 kicks = kicks
             )
+        }
+
+        fallbackNotice?.let { notice ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .widthIn(max = 330.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xE6212121))
+                    .border(2.dp, Color(0xFFFFD700), RoundedCornerShape(12.dp))
+                    .padding(12.dp)
+            ) {
+                Text(notice, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
         // 2. Top HUD Overlay
@@ -338,7 +372,10 @@ fun GamePlayScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Button(
-                        onClick = { use3DDiorama = !use3DDiorama },
+                        onClick = {
+                            fallbackNotice = null
+                            use3DDiorama = !use3DDiorama
+                        },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (use3DDiorama) Color(0xFF00E5FF) else Color(0xFF455A64)
                         ),
@@ -697,6 +734,10 @@ private fun ArcadeHoldButton(
     onPressChanged: (Boolean) -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val currentPressChanged by rememberUpdatedState(onPressChanged)
+    DisposableEffect(Unit) {
+        onDispose { currentPressChanged(false) }
+    }
     Box(
         modifier = Modifier
             .size(58.dp)
@@ -716,8 +757,8 @@ private fun ArcadeHoldButton(
                 contentDescription = subtitle
                 // Accessibility and Compose UI tests activate the same game action.
                 onClick(label = subtitle) {
-                    onPressChanged(true)
-                    onPressChanged(false)
+                    currentPressChanged(true)
+                    currentPressChanged(false)
                     true
                 }
             }
@@ -725,10 +766,13 @@ private fun ArcadeHoldButton(
                 detectTapGestures(
                     onPress = {
                         isPressed = true
-                        onPressChanged(true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        onPressChanged(false)
+                        currentPressChanged(true)
+                        try {
+                            tryAwaitRelease()
+                        } finally {
+                            isPressed = false
+                            currentPressChanged(false)
+                        }
                     }
                 )
             },
@@ -756,10 +800,11 @@ private fun ArcadeHoldButton(
             Text(
                 text = subtitle,
                 color = if (isPressed) Color.Black else Color.White.copy(alpha = 0.92f),
-                fontSize = 7.sp,
+                fontSize = if (subtitle.length > 12) 7.sp else 8.sp,
+                lineHeight = 9.sp,
                 fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                softWrap = false,
+                maxLines = 2,
+                softWrap = true,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
             )
