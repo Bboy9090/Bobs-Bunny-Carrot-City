@@ -405,16 +405,23 @@ fun GamePlayScreen(
 
             // Stage Progress Bar + Swag Meter
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .widthIn(max = 640.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xC40D1928))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "World ${stageConfig.worldNumber} Progress (${(progressFraction * 100).toInt()}%) • ${badge.badgePerkDescription}",
+                        text = "W${stageConfig.worldNumber} · ${stageConfig.code}  ${(progressFraction * 100).toInt()}%  •  ${badge.badgePerkDescription}",
                         color = Color.White,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     LinearProgressIndicator(
                         progress = { progressFraction },
@@ -462,18 +469,30 @@ fun GamePlayScreen(
                 }
             }
 
-            // Phase 5: Holo-Ghost Speedrun Rival tracker
+            // Short, high-contrast ghost tracker stays off the playfield.
             Spacer(modifier = Modifier.height(4.dp))
             val ghostLead = engine.playerX - engine.ghostRivalX
+            val ghostDetail = if (ghostLead >= 0f) {
+                "You lead Holo-Ghost by ${ghostLead.toInt()} units. Hold the lead for 25 bonus carrots."
+            } else {
+                "Holo-Ghost is ${(-ghostLead).toInt()} units ahead. Catch it before par time."
+            }
             Text(
                 text = if (ghostLead >= 0f) {
-                    "👻 Holo-Ghost: You lead by ${ghostLead.toInt()}u — keep it for +25 🥕!"
+                    "👻 GHOST  •  +${ghostLead.toInt()}u LEAD"
                 } else {
-                    "👻 Holo-Ghost ahead by ${(-ghostLead).toInt()}u — catch it before Par Time!"
+                    "👻 GHOST  •  ${(-ghostLead).toInt()}u BEHIND"
                 },
-                color = if (ghostLead >= 0f) Color(0xFF00E676) else Color(0xFFFF80AB),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color(0xD411192C))
+                    .border(1.dp, if (ghostLead >= 0f) Color(0xFF00E676) else Color(0xFFFF80AB), RoundedCornerShape(9.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .semantics { contentDescription = ghostDetail },
+                color = if (ghostLead >= 0f) Color(0xFF00E676) else Color(0xFFFFB2C8),
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
             )
 
             if (bossEntity != null) {
