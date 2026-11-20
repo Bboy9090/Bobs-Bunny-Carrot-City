@@ -13,6 +13,8 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.floor
+import kotlin.math.ceil
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -60,6 +62,7 @@ class CarrotCity3DRenderer(
         private set
     private var fpsFrames = 0
     private var fpsLastTimeNs = System.nanoTime()
+    private var lastCameraFrameNs = 0L
     private var initialized = false
     private var firstFrameReported = false
     private var firstDrawStartedLogged = false
@@ -68,6 +71,11 @@ class CarrotCity3DRenderer(
         initialized = false
         firstFrameReported = false
         firstDrawStartedLogged = false
+        // A newly created EGL surface must not inherit a camera dt from the
+        // previous, possibly paused, renderer context.
+        lastCameraFrameNs = 0L
+        fpsFrames = 0
+        fpsLastTimeNs = System.nanoTime()
         try {
             Log.i("BobsBunnyDiorama", "onSurfaceCreated GLES version=" +
                 GLES30.glGetString(GLES30.GL_VERSION) + " renderer=" +
@@ -112,6 +120,13 @@ class CarrotCity3DRenderer(
             fpsLastTimeNs = now
         }
 
+        val frameSeconds = if (lastCameraFrameNs == 0L) {
+            1f / 60f
+        } else {
+            ((now - lastCameraFrameNs) / 1_000_000_000f).coerceIn(1f / 240f, 0.05f)
+        }
+        lastCameraFrameNs = now
+
         // Read exactly one published snapshot for this GL frame; never mix updates.
         val frame = frames.snapshot()
         val sky = frame.skyTop
@@ -132,8 +147,10 @@ class CarrotCity3DRenderer(
         val targetCamX = (playerX3d + lookAhead).coerceAtLeast(3.5f)
         val targetCamY = (playerY3d * 0.45f + 1.35f).coerceIn(1.1f, 4.5f)
 
-        camX3d += (targetCamX - camX3d) * 0.12f
-        camY3d += (targetCamY - camY3d) * 0.10f
+        // Exponential damping uses elapsed frame time instead of a fixed
+        // per-frame blend; the camera feels consistent at 30, 60 and 120 FPS.
+        camX3d = DioramaCameraSmoothing.approach(camX3d, targetCamX, 7.67f, frameSeconds)
+        camY3d = DioramaCameraSmoothing.approach(camY3d, targetCamY, 6.32f, frameSeconds)
 
         val shakeX = if (frame.screenShakeTimer > 0f) sin(frame.frameTick * 2.1f) * 0.08f else 0f
         val shakeY = if (frame.screenShakeTimer > 0f) cos(frame.frameTick * 2.7f) * 0.06f else 0f
@@ -154,7 +171,7 @@ class CarrotCity3DRenderer(
         drawCarrots3D(camX3d, t, frame)
         drawPowerUps3D(camX3d, t, frame)
         drawEnemies3D(camX3d, t, frame)
-        drawGoalSafehouse3D(t, frame)
+        drawGoalSafehouse3D(camX3d, t, frame)
         drawBob3D(playerX3d, playerY3d, t, frame)
         drawParticles3D(frame)
         drawForegroundFraming(camX3d)
@@ -189,16 +206,22 @@ class CarrotCity3DRenderer(
 
     private fun drawDistantCarrotCitySkyline(camX: Float) {
         // Distant rolling green N64 hills
-        for (i in -2..12) {
+        // Populate the horizon around the camera, not only near stage spawn.
+        // The exact world-space indices stay deterministic as the player travels.
+        val firstHill = floor((camX - 22f) / 6.5f).toInt()
+        val lastHill = ceil((camX + 22f) / 6.5f).toInt()
+        for (i in firstHill..lastHill) {
             val hx = i * 6.5f
             if (abs(hx - camX) > 22f) continue
             drawMesh(sphere, hx, -1.5f, -13f, 9f, 5.5f, 4f, 0.22f, 0.62f, 0.30f)
         }
         // Distant Carrot City towers
-        for (i in 0..14) {
+        val firstTower = floor((camX - 22f) / 4.2f).toInt()
+        val lastTower = ceil((camX + 26f) / 4.2f).toInt()
+        for (i in firstTower..lastTower) {
             val bx = i * 4.2f - 2f
             if (abs(bx - camX) > 24f) continue
-            val h = 4.5f + (i % 3) * 2.2f
+            val h = 4.5f + Math.floorMod(i, 3) * 2.2f
             drawMesh(box, bx, h * 0.5f - 1.5f, -16f, 2.2f, h, 2.2f, 0.28f, 0.36f, 0.54f)
             // Glowing tower roof accent
             drawMesh(cone, bx, h - 1.1f, -16f, 2.4f, 1.0f, 2.4f, 1.0f, 0.52f, 0.10f)
@@ -206,7 +229,9 @@ class CarrotCity3DRenderer(
     }
 
     private fun drawMidgroundDioramaProps(camX: Float, t: Float) {
-        for (i in 0..18) {
+        val firstProp = floor((camX - 15f) / 3.4f).toInt()
+        val lastProp = ceil((camX + 17f) / 3.4f).toInt()
+        for (i in firstProp..lastProp) {
             val mx = i * 3.4f - 1f
             if (abs(mx - camX) > 16f) continue
             if (i % 3 == 0) {
@@ -327,8 +352,9 @@ class CarrotCity3DRenderer(
         }
     }
 
-    private fun drawGoalSafehouse3D(t: Float, frame: DioramaFrameSnapshot) {
+    private fun drawGoalSafehouse3D(camX: Float, t: Float, frame: DioramaFrameSnapshot) {
         val gx = frame.stageData.goalX * WORLD_SCALE
+        if (abs(gx - camX) > 20f) return
         drawMesh(box, gx, 0.9f, 0f, 1.8f, 1.8f, 1.6f, 1.0f, 0.84f, 0.15f)
         drawMesh(cone, gx, 2.25f, 0f, 2.2f, 1.1f, 2.0f, 1.0f, 0.45f, 0.05f, rotY = 45f)
         drawMesh(sphere, gx, 3.05f + sin(t * 2f) * 0.1f, 0f, 0.4f, 0.4f, 0.4f, 0.0f, 0.92f, 1.0f)
