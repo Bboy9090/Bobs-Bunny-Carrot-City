@@ -55,6 +55,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -156,6 +159,22 @@ fun GamePlayScreen(
             heldKeys.clear()
             engine.releaseHeldInputs()
         }
+    }
+    // Backgrounding the app: release every held input and pause a live stage so the player does not
+    // return to a running game or to controls whose release events were never delivered.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, engine) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (GameplayLifecyclePolicy.shouldReleaseHeldInputs(event)) {
+                heldKeys.clear()
+                engine.releaseHeldInputs()
+            }
+            if (GameplayLifecyclePolicy.shouldAutoPause(event, engine.isStageCleared, engine.isStageFailed)) {
+                isPaused = true
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     LaunchedEffect(engine, isPaused, engine.isStageCleared, engine.isStageFailed) {
         if (isPaused || engine.isStageCleared || engine.isStageFailed) {
