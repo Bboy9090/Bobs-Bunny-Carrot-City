@@ -54,6 +54,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -325,6 +326,7 @@ fun GamePlayScreen(
                 ) {
                     Text(
                         text = "${stageConfig.code} • ${stageConfig.title} (${activeHero.displayName})",
+                        modifier = Modifier.testTag("gameplay_stage_title"),
                         color = Color(0xFFFFD700),
                         fontWeight = FontWeight.Black,
                         fontSize = 13.sp
@@ -417,6 +419,7 @@ fun GamePlayScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "W${stageConfig.worldNumber} · ${stageConfig.code}  ${(progressFraction * 100).toInt()}%  •  ${badge.badgePerkDescription}",
+                        modifier = Modifier.testTag("gameplay_stage_progress"),
                         color = Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,

@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -66,7 +67,10 @@ class ExampleInstrumentedTest {
         composeRule.mainClock.autoAdvance = false
         composeRule.mainClock.advanceTimeBy(200)
 
-        composeRule.onNodeWithText("W1-BOSS", substring = true).assertIsDisplayed()
+        // The stage code appears in both the title chip and the progress line; assert each
+        // on its own tagged node so the check stays strict without matching ambiguously.
+        composeRule.onNodeWithTag("gameplay_stage_title").assertIsDisplayed().assertTextContains("W1-BOSS", substring = true)
+        composeRule.onNodeWithTag("gameplay_stage_progress").assertIsDisplayed().assertTextContains("W1-BOSS", substring = true)
         composeRule.onNodeWithText("TROLL DASH").assertIsDisplayed()
         composeRule.onNodeWithText("HOP / EARS").assertIsDisplayed()
         composeRule.onNodeWithText("BURROW").assertIsDisplayed()
@@ -107,7 +111,8 @@ class ExampleInstrumentedTest {
         composeRule.onNodeWithText("2D").performClick()
         composeRule.mainClock.advanceTimeBy(80)
         composeRule.onNodeWithText("3D").assertIsDisplayed()
-        composeRule.onNodeWithText("W1-1", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTag("gameplay_stage_title").assertIsDisplayed().assertTextContains("W1-1", substring = true)
+        composeRule.onNodeWithTag("gameplay_stage_progress").assertIsDisplayed().assertTextContains("W1-1", substring = true)
         composeRule.mainClock.autoAdvance = true
     }
 
