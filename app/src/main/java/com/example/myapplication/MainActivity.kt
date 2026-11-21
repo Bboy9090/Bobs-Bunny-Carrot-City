@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -77,6 +78,7 @@ private fun BobsBunnyCarrotCityApp(repository: GameProgressRepository) {
             HomeHubScreen(
                 profile = profile,
                 onSelectStage = { stage ->
+                    Log.i("BobsBunnyDiorama", "StagePlay navigation requested: " + stage.code)
                     soundEngine.playJump()
                     destination = AppDestination.StagePlay(stage)
                 },

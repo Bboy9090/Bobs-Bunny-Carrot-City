@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -27,11 +28,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -39,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -49,15 +54,30 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.audio.CartoonSoundEngine
 import com.example.myapplication.data.PlayerProfileState
 import com.example.myapplication.game.CartoonStageEngine
+import com.example.myapplication.game.FixedStepGameClock
 import com.example.myapplication.model.GameCatalog
+import com.example.myapplication.ui.game3d.Cartoon3DDioramaView
+import com.example.myapplication.ui.game3d.DioramaFrameBridge
 import com.example.myapplication.model.StageConfig
 import com.example.myapplication.ui.game.CartoonStageCanvas
+import kotlinx.coroutines.delay
 
 @Composable
 fun GamePlayScreen(
@@ -67,6 +87,12 @@ fun GamePlayScreen(
     onStageCompleted: (carrotsEarned: Int, shardsEarned: Int, starsEarned: Int, clearTimeSeconds: Float) -> Unit,
     onExitToMenu: () -> Unit
 ) {
+    // One-shot entry receipt: distinguish an uncommitted composition from a
+    // failed navigation or a GL surface that never mounted on slow emulators.
+    remember(stageConfig.code) {
+        Log.i("BobsBunnyDiorama", "GamePlayScreen entry: " + stageConfig.code)
+        true
+    }
     val view = LocalView.current
     val focusRequester = remember { FocusRequester() }
     val activeHero = profile.selectedHero
@@ -95,9 +121,13 @@ fun GamePlayScreen(
 
     var attemptKey by remember { mutableStateOf(0) }
     var isPaused by remember { mutableStateOf(false) }
+    var fallbackNotice by remember(stageConfig.id) { mutableStateOf<String?>(null) }
+    var use3DDiorama by remember(stageConfig.id) { mutableStateOf(stageConfig.code == "W1-1") }
     var rewardCommitted by remember(stageConfig.id, attemptKey) { mutableStateOf(false) }
 
     val engine = remember(stageConfig, attemptKey, activeHero.id, activeMutator.id) {
+        val startedNanos = android.os.SystemClock.elapsedRealtimeNanos()
+        Log.i("BobsBunnyDiorama", "Stage engine init started: " + stageConfig.code)
         CartoonStageEngine(
             stageConfig = stageConfig,
             selectedHero = activeHero,
@@ -105,21 +135,79 @@ fun GamePlayScreen(
             equippedBadgeId = badge.id,
             trailColor = trail.primaryColor,
             soundEngine = soundEngine
-        )
+        ).also {
+            Log.i("BobsBunnyDiorama", "Stage engine init completed in " +
+                ((android.os.SystemClock.elapsedRealtimeNanos() - startedNanos) / 1_000_000L) + "ms")
+        }
+    }
+
+    // This bridge belongs to the engine attempt, not a composable renderer mount.
+    // The 2D fallback and GL view share the same gameplay simulation.
+    val dioramaFrames = remember(engine) {
+        Log.i("BobsBunnyDiorama", "Diorama snapshot initial capture started")
+        DioramaFrameBridge(engine).also {
+            Log.i("BobsBunnyDiorama", "Diorama snapshot initial capture completed")
+        }
+    }
+    LaunchedEffect(engine) {
+        Log.i("BobsBunnyDiorama", "GamePlayScreen composition mounted: " + stageConfig.code)
+    }
+
+    val heldKeys = remember(engine) { mutableSetOf<Key>() }
+    DisposableEffect(engine) {
+        onDispose {
+            heldKeys.clear()
+            engine.releaseHeldInputs()
+        }
+    }
+    // Backgrounding the app: release every held input and pause a live stage so the player does not
+    // return to a running game or to controls whose release events were never delivered.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, engine) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (GameplayLifecyclePolicy.shouldReleaseHeldInputs(event)) {
+                heldKeys.clear()
+                engine.releaseHeldInputs()
+            }
+            if (GameplayLifecyclePolicy.shouldAutoPause(event, engine.isStageCleared, engine.isStageFailed)) {
+                isPaused = true
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(engine, isPaused, engine.isStageCleared, engine.isStageFailed) {
+        if (isPaused || engine.isStageCleared || engine.isStageFailed) {
+            heldKeys.clear()
+            engine.releaseHeldInputs()
+        }
+    }
+
+    LaunchedEffect(fallbackNotice) {
+        if (fallbackNotice != null) {
+            delay(4500L)
+            fallbackNotice = null
+        }
     }
 
     LaunchedEffect(Unit) {
         runCatching { focusRequester.requestFocus() }
     }
 
-    // 60 FPS Game Loop
-    LaunchedEffect(engine, isPaused) {
+    // Deterministic 60-Hz gameplay regardless of 30/60/120-Hz displays.
+    // Avoid artificial minimum dt and bounded catch-up after blocked frames.
+    LaunchedEffect(engine, isPaused, use3DDiorama) {
+        if (use3DDiorama) dioramaFrames.publish(engine)
+        val gameClock = FixedStepGameClock()
         var lastFrameNanos = withFrameNanos { it }
         while (!isPaused && !engine.isStageCleared && !engine.isStageFailed) {
             val now = withFrameNanos { it }
-            val dt = ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0.001f, 0.04f)
+            val realDt = ((now - lastFrameNanos) / 1_000_000_000f).coerceAtLeast(0f)
             lastFrameNanos = now
-            engine.stepFrame(dt)
+            gameClock.advance(realDt) { step ->
+                if (!engine.isStageCleared && !engine.isStageFailed) engine.stepFrame(step)
+            }
+            if (use3DDiorama) dioramaFrames.publish(engine)
         }
     }
 
@@ -144,10 +232,25 @@ fun GamePlayScreen(
         modifier = Modifier
             .fillMaxSize()
             .focusRequester(focusRequester)
+            .onFocusChanged {
+                if (!it.isFocused) {
+                    heldKeys.clear()
+                    engine.releaseHeldInputs()
+                }
+            }
             .focusable()
             .onKeyEvent { event ->
                 val isDown = event.type == KeyEventType.KeyDown
-                when (event.key) {
+                // An OS/gamepad autorepeat is not a second jump, dash or drone
+                // toggle. Directional holds remain continuous until key-up.
+                val firstPress = if (isDown) heldKeys.add(event.key) else {
+                    heldKeys.remove(event.key)
+                    false
+                }
+                if (isPaused || engine.isStageCleared || engine.isStageFailed) {
+                    engine.releaseHeldInputs()
+                    false
+                } else when (event.key) {
                     Key.DirectionLeft, Key.A -> {
                         engine.inputLeft = isDown
                         true
@@ -162,34 +265,60 @@ fun GamePlayScreen(
                     }
                     Key.Spacebar, Key.DirectionUp, Key.W, Key.ButtonA -> {
                         engine.inputJumpHeld = isDown
-                        if (isDown) {
+                        if (firstPress) {
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             engine.triggerJump()
                         }
                         true
                     }
                     Key.Enter, Key.X, Key.ButtonX, Key.ButtonB -> {
-                        if (isDown) {
+                        if (firstPress) {
                             view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                             engine.triggerTrollDashOrAction()
                         }
                         true
                     }
                     Key.P, Key.ButtonY -> {
-                        if (isDown) engine.toggleSidekickDrone()
+                        if (firstPress) engine.toggleSidekickDrone()
                         true
                     }
                     else -> false
                 }
             }
     ) {
-        // 1. Live 2.5D Cartoon Stage Canvas
-        CartoonStageCanvas(
-            engine = engine,
-            headgear = headgear,
-            hoodie = hoodie,
-            kicks = kicks
-        )
+        // 1. Live 3D Diorama (W1-1 Vertical Slice) or 2.5D Cartoon Stage Canvas
+        if (use3DDiorama) {
+            Cartoon3DDioramaView(
+                engine = engine,
+                frames = dioramaFrames,
+                paused = isPaused || engine.isStageCleared || engine.isStageFailed,
+                on3DUnavailable = { cause ->
+                    use3DDiorama = false
+                    fallbackNotice = "3D unavailable: $cause. Classic 2D remains playable."
+                }
+            )
+        } else {
+            CartoonStageCanvas(
+                engine = engine,
+                headgear = headgear,
+                hoodie = hoodie,
+                kicks = kicks
+            )
+        }
+
+        fallbackNotice?.let { notice ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .widthIn(max = 330.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xE6212121))
+                    .border(2.dp, Color(0xFFFFD700), RoundedCornerShape(12.dp))
+                    .padding(12.dp)
+            ) {
+                Text(notice, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
 
         // 2. Top HUD Overlay
         Column(
@@ -216,6 +345,7 @@ fun GamePlayScreen(
                 ) {
                     Text(
                         text = "${stageConfig.code} • ${stageConfig.title} (${activeHero.displayName})",
+                        modifier = Modifier.testTag("gameplay_stage_title"),
                         color = Color(0xFFFFD700),
                         fontWeight = FontWeight.Black,
                         fontSize = 13.sp
@@ -261,14 +391,34 @@ fun GamePlayScreen(
                     )
                 }
 
-                Button(
-                    onClick = { isPaused = !isPaused },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(2.5.dp, Color.White, RoundedCornerShape(12.dp))
-                ) {
-                    Text(if (isPaused) "Resume" else "Pause", fontWeight = FontWeight.Black, color = Color.White)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = {
+                            fallbackNotice = null
+                            use3DDiorama = !use3DDiorama
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (use3DDiorama) Color(0xFF00E5FF) else Color(0xFF455A64)
+                        ),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(2.dp, Color.White, RoundedCornerShape(12.dp))
+                    ) {
+                        Text(
+                            text = if (use3DDiorama) "3D" else "2D",
+                            fontWeight = FontWeight.Black,
+                            color = if (use3DDiorama) Color.Black else Color.White
+                        )
+                    }
+                    Button(
+                        onClick = { isPaused = !isPaused },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(2.5.dp, Color.White, RoundedCornerShape(12.dp))
+                    ) {
+                        Text(if (isPaused) "Resume" else "Pause", fontWeight = FontWeight.Black, color = Color.White)
+                    }
                 }
             }
 
@@ -276,16 +426,24 @@ fun GamePlayScreen(
 
             // Stage Progress Bar + Swag Meter
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .widthIn(max = 640.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xC40D1928))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "World ${stageConfig.worldNumber} Progress (${(progressFraction * 100).toInt()}%) • ${badge.badgePerkDescription}",
+                        text = "W${stageConfig.worldNumber} · ${stageConfig.code}  ${(progressFraction * 100).toInt()}%  •  ${badge.badgePerkDescription}",
+                        modifier = Modifier.testTag("gameplay_stage_progress"),
                         color = Color.White,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     LinearProgressIndicator(
                         progress = { progressFraction },
@@ -333,18 +491,30 @@ fun GamePlayScreen(
                 }
             }
 
-            // Phase 5: Holo-Ghost Speedrun Rival tracker
+            // Short, high-contrast ghost tracker stays off the playfield.
             Spacer(modifier = Modifier.height(4.dp))
             val ghostLead = engine.playerX - engine.ghostRivalX
+            val ghostDetail = if (ghostLead >= 0f) {
+                "You lead Holo-Ghost by ${ghostLead.toInt()} units. Hold the lead for 25 bonus carrots."
+            } else {
+                "Holo-Ghost is ${(-ghostLead).toInt()} units ahead. Catch it before par time."
+            }
             Text(
                 text = if (ghostLead >= 0f) {
-                    "👻 Holo-Ghost: You lead by ${ghostLead.toInt()}u — keep it for +25 🥕!"
+                    "👻 GHOST  •  +${ghostLead.toInt()}u LEAD"
                 } else {
-                    "👻 Holo-Ghost ahead by ${(-ghostLead).toInt()}u — catch it before Par Time!"
+                    "👻 GHOST  •  ${(-ghostLead).toInt()}u BEHIND"
                 },
-                color = if (ghostLead >= 0f) Color(0xFF00E676) else Color(0xFFFF80AB),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(Color(0xD411192C))
+                    .border(1.dp, if (ghostLead >= 0f) Color(0xFF00E676) else Color(0xFFFF80AB), RoundedCornerShape(9.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .semantics { contentDescription = ghostDetail },
+                color = if (ghostLead >= 0f) Color(0xFF00E676) else Color(0xFFFFB2C8),
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
             )
 
             if (bossEntity != null) {
@@ -374,28 +544,6 @@ fun GamePlayScreen(
                 }
             }
 
-            if (engine.quipTimer > 0f) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            brush = Brush.verticalGradient(
-                                listOf(Color(0xFFFFFDE7), Color(0xFFFFF9C4))
-                            )
-                        )
-                        .border(3.dp, Color(0xFFFF6D00), RoundedCornerShape(14.dp))
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
-                ) {
-                    Text(
-                        text = "💬 ${activeHero.displayName}: \"${engine.bobsQuip}\"",
-                        color = Color(0xFF1B0000),
-                        fontWeight = FontWeight.Black,
-                        fontSize = 12.5.sp
-                    )
-                }
-            }
-
             engine.floatingTexts.lastOrNull()?.let { callout ->
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -403,6 +551,32 @@ fun GamePlayScreen(
                     color = callout.color,
                     fontWeight = FontWeight.Black,
                     fontSize = 16.sp
+                )
+            }
+        }
+
+        // Compact quip card stays to the right instead of obscuring Bob's jumps.
+        if (engine.quipTimer > 0f && bossEntity == null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .systemBarsPadding()
+                    .padding(top = 112.dp, end = 14.dp)
+                    .widthIn(max = 220.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xF5FFF8DC))
+                    .border(2.dp, Color(0xFFFF6D00), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = "💬 ${activeHero.displayName}: \"${engine.bobsQuip}\"",
+                    color = Color(0xFF1B0000),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.5.sp,
+                    lineHeight = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -601,6 +775,10 @@ private fun ArcadeHoldButton(
     onPressChanged: (Boolean) -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val currentPressChanged by rememberUpdatedState(onPressChanged)
+    DisposableEffect(Unit) {
+        onDispose { currentPressChanged(false) }
+    }
     Box(
         modifier = Modifier
             .size(58.dp)
@@ -615,14 +793,27 @@ private fun ArcadeHoldButton(
                 )
             )
             .border(3.5.dp, if (isPressed) Color(0xFF111111) else Color(0xEEFFFFFF), CircleShape)
+            .semantics {
+                role = Role.Button
+                contentDescription = subtitle
+                // Accessibility and Compose UI tests activate the same game action.
+                onClick(label = subtitle) {
+                    currentPressChanged(true)
+                    currentPressChanged(false)
+                    true
+                }
+            }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
                         isPressed = true
-                        onPressChanged(true)
-                        tryAwaitRelease()
-                        isPressed = false
-                        onPressChanged(false)
+                        currentPressChanged(true)
+                        try {
+                            tryAwaitRelease()
+                        } finally {
+                            isPressed = false
+                            currentPressChanged(false)
+                        }
                     }
                 )
             },
@@ -637,7 +828,10 @@ private fun ArcadeHoldButton(
                 .clip(CircleShape)
                 .background(Color.White.copy(alpha = if (isPressed) 0.5f else 0.32f))
         )
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
                 text = label,
                 color = if (isPressed) Color.Black else Color.White,
@@ -647,8 +841,13 @@ private fun ArcadeHoldButton(
             Text(
                 text = subtitle,
                 color = if (isPressed) Color.Black else Color.White.copy(alpha = 0.92f),
-                fontSize = 8.sp,
-                fontWeight = FontWeight.ExtraBold
+                fontSize = if (subtitle.length > 12) 7.sp else 8.sp,
+                lineHeight = 9.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 2,
+                softWrap = true,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
             )
         }
     }

@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ main, feat/bobs-bunny-integration ]
+    branches: [ main, 'feat/bobs-bunny-*' ]
   pull_request:
     branches: [ main ]
 
@@ -26,6 +26,9 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x gradlew
+
+      - name: Verify Android package/config consistency for development
+        run: python3 scripts/check_release_identity.py --profile debug
 
       - name: Run JVM unit tests and build debug APK
         run: ./gradlew testDebugUnitTest assembleDebug --console=plain
