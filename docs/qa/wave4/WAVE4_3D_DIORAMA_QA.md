@@ -51,14 +51,14 @@ The head of `feat/bobs-bunny-3d-diorama` now includes several follow-up qualific
 - The former direct GL-thread access to mutable engine entities is resolved by `DioramaFrameBridge` and `DioramaFrameSnapshot`; render state is detached and published as one frame. The current follow-up also makes the captured collections reject mutation through a `MutableList` cast.
 - Fixed-step gameplay is covered across 30, 60 and 120 Hz inputs, with bounded catch-up after long frames.
 - Background/pause handling releases held controls, pauses a live stage, and changes the renderer to on-demand mode once a paused frame is ready.
-- Hosted API 35 software-GLES evidence exists for first-frame rendering and visible W1-1 scene output on earlier exact heads. **The current branch head has no completed workflow receipt yet.**
+- Hosted API 35 software-GLES evidence exists for first-frame rendering and visible W1-1 scene output on earlier exact heads. On `cc004dd6c8a82b3b0867673c82d35ae0cacb72bf`, the first-frame receipt passed (`0 → 1`) and the screenshot captured the game, but the central-scene color gate failed (`sceneColorClasses=3`) because an Android **Quickstep “isn't responding” system dialog** covered the rendered scene. The app log also recorded a 2.6-second/154-frame startup stall before stage navigation. This is not a passed visual gate or physical-device result.
 
 ### Current verification attempt
 
 - Debug app-identity preflight: **PASS** (`python3 scripts/check_release_identity.py --profile debug`).
-- Local Gradle unit/build execution: **BLOCKED by runner network access**; the wrapper could not download Gradle 9.6.0 from `services.gradle.org`.
+- Local Gradle unit/build execution: **BLOCKED by runner network access**; the wrapper could not download Gradle 9.6.0 from `services.gradle.org`. The exact-head GitHub Android CI workflow nevertheless **PASSed** on `cc004dd6c8a82b3b0867673c82d35ae0cacb72bf` (run #44995554727).
 - Local emulator execution: **UNAVAILABLE**; `adb` is not installed in this executor.
-- CI and hosted emulator qualification must run on the exact updated PR head before treating these changes as verified.
+- The focused hosted emulator run on that exact head failed the screenshot color gate (run #44995554722). The new test change captures immediately after the completed GL frame and Compose loader dismissal; it keeps the existing scene-color threshold. Re-run and inspect the new screenshot/logcat before counting the visual gate.
 
 ### Open release blockers
 
@@ -68,4 +68,4 @@ The head of `feat/bobs-bunny-3d-diorama` now includes several follow-up qualific
 4. Permanent Android application ID, Play registration and protected release signing/AAB (issue #5).
 5. Foldable/tablet resize qualification and platform-specific ports.
 
-**Decision:** Keep PR #2 Draft. The snapshot race is closed in source, but this executor has not produced exact-head Android test or emulator evidence. Art, hardware and store gates remain independently open.
+**Decision:** Keep PR #2 Draft. The immutable-snapshot unit test and debug APK build passed on `cc004dd6c8a82b3b0867673c82d35ae0cacb72bf`; that head's visual emulator gate failed because a system ANR dialog obscured the screenshot after the game rendered. The immediate-capture test adjustment is awaiting exact-head rerun. Art, physical hardware and store gates remain independently open.

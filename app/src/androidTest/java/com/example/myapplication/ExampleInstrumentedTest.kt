@@ -164,7 +164,12 @@ class ExampleInstrumentedTest {
 
         // Preserve screenshot AND capability evidence even if the 3D gate
         // fails, so a hosted emulator limitation is not silently misdiagnosed.
-        Thread.sleep(800)
+        // Capture as soon as the completed GL receipt and Compose clock have
+        // presented the scene. A fixed idle delay adds no render evidence and
+        // gave the API 35 software emulator time to surface a Quickstep ANR
+        // dialog over the already-rendered game. Keep the scene-color gate
+        // strict; only remove the unnecessary window in which system UI can
+        // cover the pixels under test.
         val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         val saved = bitmap?.let { image ->
             context.openFileOutput("bobs_w1_1_visual_qa.png", android.content.Context.MODE_PRIVATE).use {
