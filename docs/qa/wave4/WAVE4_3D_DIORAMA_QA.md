@@ -69,3 +69,11 @@ The head of `feat/bobs-bunny-3d-diorama` now includes several follow-up qualific
 5. Foldable/tablet resize qualification and platform-specific ports.
 
 **Decision:** Keep PR #2 Draft. The immutable-snapshot unit test and debug APK build passed on `cc004dd6c8a82b3b0867673c82d35ae0cacb72bf`. Visual QA failed on two heads: `cc004dd6` because Quickstep's ANR dialog covered the screenshot, then `90190fbb` because the Compose loading frame was sampled while a later shell screenshot showed the rendered scene. The updated test waits for loading-overlay removal and retains the exact bitmap it checks; exact-head rerun is pending. Art, physical hardware and store gates remain independently open.
+
+### Exact-head retry result on `6875dd2f9596a650fd9e210e5c436ab4189b49b8`
+
+- Android Emulator 3D Visual QA run #44997165437 failed during harness startup, before the instrumentation test: `./scripts/ci-run-emulator-qa.sh: Permission denied` (exit 126). The Git tree had lost the script's executable bit while publishing the preceding change.
+- No JUnit report or screenshot artifact was produced; this run provides no gameplay, render, or scene-color result. The repair restores mode `100755` without changing script content. The strict scene-color threshold remains unchanged; rerun on the new exact head is required.
+- Android CI run #44997165462 is still in progress as of this ledger update.
+
+**Decision:** keep PR #2 Draft. The latest emulator attempt is a harness-mode failure, not a pass or an app regression result. Previous visual failures remain recorded above. Owner art, API 26/physical hardware, human gameplay and store-signing gates remain open.
