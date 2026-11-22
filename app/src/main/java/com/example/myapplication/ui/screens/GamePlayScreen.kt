@@ -555,14 +555,16 @@ fun GamePlayScreen(
             }
         }
 
-        // Compact quip card stays to the right instead of obscuring Bob's jumps.
+        // Dialogue uses the reserved slot above the touch controls so the
+        // floating callout cannot collide with the top HUD or Bob's jump lane.
         if (engine.quipTimer > 0f && bossEntity == null) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .align(Alignment.BottomEnd)
                     .systemBarsPadding()
-                    .padding(top = 112.dp, end = 14.dp)
-                    .widthIn(max = 220.dp)
+                    .padding(end = 14.dp, bottom = 82.dp)
+                    .widthIn(max = 280.dp)
+                    .testTag("gameplay_quip")
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xF5FFF8DC))
                     .border(2.dp, Color(0xFFFF6D00), RoundedCornerShape(12.dp))
@@ -572,9 +574,9 @@ fun GamePlayScreen(
                     text = "💬 ${activeHero.displayName}: \"${engine.bobsQuip}\"",
                     color = Color(0xFF1B0000),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 10.5.sp,
-                    lineHeight = 12.sp,
-                    maxLines = 2,
+                    fontSize = 11.sp,
+                    lineHeight = 13.sp,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center
                 )
@@ -586,6 +588,7 @@ fun GamePlayScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .testTag("gameplay_controls")
                 .systemBarsPadding()
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,

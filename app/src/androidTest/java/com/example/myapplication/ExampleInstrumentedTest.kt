@@ -48,6 +48,14 @@ class ExampleInstrumentedTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
 
+    private fun assertHudElementsDoNotOverlap(firstTag: String, secondTag: String) {
+        val first = composeRule.onNodeWithTag(firstTag).fetchSemanticsNode().boundsInRoot
+        val second = composeRule.onNodeWithTag(secondTag).fetchSemanticsNode().boundsInRoot
+        val overlaps = first.left < second.right && first.right > second.left &&
+            first.top < second.bottom && first.bottom > second.top
+        assertTrue("$firstTag overlaps $secondTag: $first vs $second", !overlaps)
+    }
+
     private fun findDioramaSurface(view: View): GLSurfaceView? {
         if (view is GLSurfaceView) return view
         if (view is ViewGroup) {
@@ -225,6 +233,14 @@ class ExampleInstrumentedTest {
         // so its callback dismisses the loader before capturing the screenshot.
         // This never increments or manufactures a native render receipt.
         if (rendered3D) composeRule.mainClock.advanceTimeBy(250)
+        if (rendered3D) {
+            composeRule.waitUntil(5_000L) {
+                composeRule.onAllNodesWithTag("gameplay_quip")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            assertHudElementsDoNotOverlap("gameplay_quip", "gameplay_stage_progress")
+            assertHudElementsDoNotOverlap("gameplay_quip", "gameplay_controls")
+        }
         // The GL thread increments its receipt immediately before posting the
         // Compose frameReady update. Drive subsequent frames until the loading
         // overlay is absent, so the screenshot cannot race that posted update.

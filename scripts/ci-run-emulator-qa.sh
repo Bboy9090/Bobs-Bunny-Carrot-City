@@ -4,67 +4,79 @@ set -euo pipefail
 # Run inside Android emulator runner while adb is attached. Capture diagnostic
 # evidence even when test assertions fail; never override the test exit status.
 set +e
-# Reduce software-GL framebuffer pressure on the hosted emulator and record
-# the effective dimensions. At 1600x900 the API 35 SwiftShader run showed
-# SurfaceSyncGroup timeouts, 1.4-1.6s HWUI frames and a Quickstep ANR dialog.
-# 1280x720 preserves the 16:9 gameplay layout while reducing pixel work by 36%.
-# This is a documented hosted-test viewport, not a change to the player app;
-# physical-device frame pacing remains a separate open qualification gate.
-mkdir -p reports/android-emulator
-adb shell wm size 1280x720 || true
+output_dir="reports/android-emulator"
+mkdir -p "$output_dir"
+# Keep the same 16:9 ratio while qualifying two useful landscape sizes. The
+# second run checks the quip's safe slot against actual HUD/control bounds at
+# a narrower viewport; the player app remains density-independent.
 adb shell wm density 240 || true
-adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
-adb shell wm size > reports/android-emulator/display-size.txt || true
-adb shell wm density > reports/android-emulator/display-density.txt || true
 
-# Run the visual qualification alone first. Other tests may change the same
-# Activity/GLSurfaceView lifecycle; their first-frame receipts must not be
-# mistaken for evidence that this test actually rendered W1-1.
-./gradlew connectedDebugAndroidTest --console=plain \
-  '-Pandroid.testInstrumentationRunnerArguments.class=com.example.myapplication.ExampleInstrumentedTest#w1One_visualCaptureWaitsForFirst3dDraw'
-visual_status=$?
-if [ "$visual_status" -eq 0 ]; then
-  # Still qualify the complete normal Android instrumentation suite.
+run_visual_viewport() {
+  local size="$1"
+  local label="$2"
+  adb shell wm size "$size" || return $?
+  adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
+  adb shell wm size > "$output_dir/display-size-${label}.txt" || true
+  adb shell wm density > "$output_dir/display-density-${label}.txt" || true
+  ./gradlew connectedDebugAndroidTest --console=plain \
+    '-Pandroid.testInstrumentationRunnerArguments.class=com.example.myapplication.ExampleInstrumentedTest#w1One_visualCaptureWaitsForFirst3dDraw'
+  local visual_status=$?
+  if ! adb pull /sdcard/Download/bobs_w1_1_visual_qa.png "$output_dir/w1-1-${label}.png"; then
+    echo "No retained screenshot for viewport $size"
+    return 1
+  fi
+  return "$visual_status"
+}
+
+test_status=0
+run_visual_viewport 1280x720 1280x720
+test_status=$?
+if [ "$test_status" -eq 0 ]; then
+  run_visual_viewport 960x540 960x540
+  test_status=$?
+fi
+
+# Restore the stable primary viewport before running the full instrumentation
+# suite and exporting the compatibility screenshot.
+adb shell wm size 1280x720 || true
+adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
+if [ "$test_status" -eq 0 ]; then
   ./gradlew connectedDebugAndroidTest --console=plain
   test_status=$?
-else
-  echo "Focused W1-1 test failed (exit $visual_status); preserving its diagnostic screenshot."
-  test_status=$visual_status
 fi
 set -e
 
-output_dir="reports/android-emulator"
-mkdir -p "$output_dir"
 adb devices -l | tee "$output_dir/adb-devices.txt" || true
 adb shell getprop ro.build.version.sdk | tr -d '\r' > "$output_dir/android-api-level.txt" || true
 adb shell getprop ro.opengles.version | tr -d '\r' > "$output_dir/device-gles-version.txt" || true
 adb shell getprop ro.hardware | tr -d '\r' > "$output_dir/emulator-hardware.txt" || true
+adb shell wm size > "$output_dir/display-size.txt" || true
+adb shell wm density > "$output_dir/display-density.txt" || true
 adb logcat -d -v threadtime -s BobsBunnyDiorama:I > "$output_dir/diorama-gl-logcat.txt" || true
-# The failed screenshot can show the prior screen, so retain useful Activity
-# transition evidence alongside GL lifecycle and first-frame receipts.
 adb shell dumpsys activity activities > "$output_dir/activity-state.txt" || true
-
-# The test emits its first-frame receipt to logcat. Gradle uninstalls the
-# debuggable app after instrumentation, so private run-as files are gone.
-# The test also saves a real device screenshot to shared Downloads.
 grep 'W1-1 hosted QA:' "$output_dir/diorama-gl-logcat.txt" > "$output_dir/w1-1-render-diagnostics.txt" || true
 if test ! -s "$output_dir/w1-1-render-diagnostics.txt"; then
   echo "Render test did not produce a logged diagnostic receipt" > "$output_dir/w1-1-render-diagnostics.txt"
 fi
-
 if adb pull /sdcard/Download/bobs_w1_1_visual_qa.png "$output_dir/w1-1-device-capture.png"; then
-  if test -s "$output_dir/w1-1-device-capture.png"; then
-    file "$output_dir/w1-1-device-capture.png" | tee "$output_dir/image-info.txt"
-    sha256sum "$output_dir/w1-1-device-capture.png" | tee "$output_dir/SHA256SUMS.txt"
-  fi
+  file "$output_dir/w1-1-device-capture.png" | tee "$output_dir/image-info.txt"
+  sha256sum "$output_dir/w1-1-device-capture.png" | tee "$output_dir/SHA256SUMS.txt"
 else
   rm -f "$output_dir/w1-1-device-capture.png"
 fi
+for image in "$output_dir/w1-1-1280x720.png" "$output_dir/w1-1-960x540.png"; do
+  if test -s "$image"; then
+    file "$image" | tee -a "$output_dir/image-info.txt"
+    sha256sum "$image" | tee -a "$output_dir/SHA256SUMS.txt"
+  fi
+done
 
 if [ "$test_status" -ne 0 ]; then
-  echo "Android instrumentation failed (exit $test_status); diagnostics and screenshot retained in artifacts."
+  echo "Android instrumentation failed (exit $test_status); diagnostics and viewport screenshots retained in artifacts."
   exit "$test_status"
 fi
 
 test -s "$output_dir/w1-1-device-capture.png"
-echo "Verified W1-1 first-frame screenshot on API 35 emulator."
+test -s "$output_dir/w1-1-1280x720.png"
+test -s "$output_dir/w1-1-960x540.png"
+echo "Verified W1-1 first-frame screenshots on API 35 emulator at 1280x720 and 960x540."
