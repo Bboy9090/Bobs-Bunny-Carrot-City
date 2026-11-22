@@ -95,3 +95,20 @@ The head of `feat/bobs-bunny-3d-diorama` now includes several follow-up qualific
 - Hosted-only profile update: reduce the API 35 SwiftShader emulator viewport from 1600×900 to 1280×720 (still landscape 16:9) to reduce raster work after the measured SurfaceSyncGroup/HWUI stalls. The player app and visual thresholds are unchanged. The next exact-head rerun must show the modal-free **full-screen** scene; PixelCopy alone cannot pass the UI screenshot gate.
 
 **Decision:** keep Draft and preserve #44998161780 as a failed API 35 visual attempt. Physical GPU, sustained frame pacing, API 26 and store gates remain unverified.
+
+### Exact-head hosted verification on `278347d7387879e89b069f84afc88193b0291b90`
+
+- Android CI run [#44998757146](https://github.com/Bboy9090/Bobs-Bunny-Carrot-City/actions/runs/44998757146) **PASSed** (job: `Unit Tests & Debug APK`).
+- Android Emulator 3D Visual QA run [#44998757114](https://github.com/Bboy9090/Bobs-Bunny-Carrot-City/actions/runs/44998757114) **PASSed** on API 35, x86_64, software GLES / SwiftShader, hosted landscape viewport 1280×720. Job: `API 35 W1-1 3D Emulator QA`.
+- Uploaded JUnit reports 8/8 instrumentation tests, zero failures/errors/skips. Both focused and full-suite captures show the 3D city in the composed screenshot: scene-specific color classes 33 and 29; direct GLSurfaceView PixelCopy measured 34 and 29. First-frame/readiness checks passed and the retained full-screen captures are modal-free. The exact artifact is `bobs-bunny-w1-1-android-emulator-qa` (14744533310); JUnit artifact is `bobs-bunny-api35-instrumentation` (14744787521).
+- The prior 1600×900 API35 attempt #44998161780 remains a **failed viewport-specific qualification**: its PixelCopy found the 3D scene, but a Quickstep ANR modal obscured the full-screen screenshot. At 1280×720 the full composed screenshot gate passes without dismissing/cropping system UI. This supports only the reduced-resolution hosted SwiftShader profile and does not establish physical-device performance.
+
+### Current blocker ledger
+
+1. **Owner art approval / production artwork** — open, issue #3. Bob and Carrot City assets remain provisional procedural 3D art.
+2. **API 26 and physical Android qualification** — open, issue #4. No Adreno/Mali evidence, sustained frame-time/thermal results, touch latency or EGL context-loss/resume proof.
+3. **Human end-to-end gameplay** — open, issue #4. A player still needs to complete W1-1 and verify checkpoints, collectibles, foes, save/reload, rewards and 2D/3D parity.
+4. **Production Android identity and signed AAB** — open, issue #5. Package/Play registration and owner-controlled protected signing are unresolved.
+5. **Foldable/tablet resize and platform ports** — open/unverified.
+
+**Decision:** PR #2 remains Draft. The exact head has passing Android CI and hosted API35 SwiftShader visual/instrumentation evidence at 1280×720 only. The 1600×900 emulator ANR failure remains recorded. No merge, publication or store-readiness claim; physical hardware, API26, owner art, complete human gameplay and signing remain release blockers.
