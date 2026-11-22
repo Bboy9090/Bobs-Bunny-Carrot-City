@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
@@ -14,6 +15,10 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import android.content.ContentValues
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import com.example.myapplication.audio.CartoonSoundEngine
 import com.example.myapplication.data.GameProgressRepository
 import com.example.myapplication.model.PlayableHero
@@ -142,7 +147,6 @@ class ExampleInstrumentedTest {
         // suite can legitimately have completed earlier GLSurfaceView draws.
         // Only an increment beyond our pre-navigation baseline proves THIS
         // launch rendered a fresh scene; do not assert the global count is zero.
-        // No Compose semantics calls below this point; use the GL callback.
         // The other W1-1 mode-toggle test already checks the 3D UI label.
 
         val deadline = android.os.SystemClock.elapsedRealtime() + 45_000L
@@ -157,6 +161,19 @@ class ExampleInstrumentedTest {
         // so its callback dismisses the loader before capturing the screenshot.
         // This never increments or manufactures a native render receipt.
         if (rendered3D) composeRule.mainClock.advanceTimeBy(250)
+        // The GL thread increments its receipt immediately before posting the
+        // Compose frameReady update. Drive subsequent frames until the loading
+        // overlay is absent, so the screenshot cannot race that posted update.
+        val loadingDeadline = android.os.SystemClock.elapsedRealtime() + 5_000L
+        var loadingOverlayVisible = composeRule.onAllNodesWithTag("diorama_loading_overlay")
+            .fetchSemanticsNodes().isNotEmpty()
+        while (rendered3D && loadingOverlayVisible &&
+            android.os.SystemClock.elapsedRealtime() < loadingDeadline) {
+            composeRule.mainClock.advanceTimeBy(32)
+            Thread.sleep(20)
+            loadingOverlayVisible = composeRule.onAllNodesWithTag("diorama_loading_overlay")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val manager = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
         val reportedGles = manager?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
@@ -171,11 +188,39 @@ class ExampleInstrumentedTest {
         // strict; only remove the unnecessary window in which system UI can
         // cover the pixels under test.
         val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-        val saved = bitmap?.let { image ->
+        val savedPrivately = bitmap?.let { image ->
             context.openFileOutput("bobs_w1_1_visual_qa.png", android.content.Context.MODE_PRIVATE).use {
                 image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }
         } ?: false
+        // Retain the exact bitmap used by the color assertions. The separate
+        // shell screencap can happen after instrumentation teardown and must not
+        // be substituted for the evidence that this test actually inspected.
+        val savedForArtifact = if (bitmap != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, "bobs_w1_1_visual_qa.png")
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            val wrote = uri?.let { target ->
+                context.contentResolver.openOutputStream(target, "w")?.use { stream ->
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+                } ?: false
+            } ?: false
+            if (uri != null) {
+                if (wrote) {
+                    context.contentResolver.update(uri, ContentValues().apply {
+                        put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    }, null, null)
+                } else {
+                    context.contentResolver.delete(uri, null, null)
+                }
+            }
+            wrote
+        } else false
+        val saved = savedPrivately && savedForArtifact
         val colors = mutableSetOf<Int>()
         val sceneColors = mutableSetOf<Int>()
         if (bitmap != null) {
@@ -197,6 +242,7 @@ class ExampleInstrumentedTest {
             "\nfirstFrameBefore=" + completedBefore +
             "\nfirstFrameAfter=" + completedAfter +
             "\n3dCompleted=" + rendered3D +
+            "\nloadingOverlayVisible=" + loadingOverlayVisible +
             "\nscreenshotSaved=" + saved +
             "\nsampledColorClasses=" + colors.size +
             "\nsceneColorClasses=" + sceneColors.size + "\n"
@@ -205,21 +251,10 @@ class ExampleInstrumentedTest {
         android.util.Log.i("BobsBunnyDiorama", "W1-1 hosted QA: " +
             diagnostics.replace("\n", " | "))
 
-        // Gradle uninstalls instrumented applications on the hosted runner,
-        // so private app files cannot be fetched afterward via adb run-as.
-        // Shell screencap writes an actual device screenshot into shared
-        // Downloads which remains available for GitHub artifact upload.
-        val screenshotFd = InstrumentationRegistry.getInstrumentation().uiAutomation
-            .executeShellCommand("screencap -p /sdcard/Download/bobs_w1_1_visual_qa.png")
-        screenshotFd?.use { fd ->
-            android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { stream ->
-                stream.readBytes() // wait for the shell command to complete
-            }
-        }
-
         assertTrue("GLES3 did not complete first W1-1 frame: " + diagnostics, rendered3D)
         assertTrue("W1-1 3D screenshot unavailable: " + diagnostics, saved)
         assertTrue("W1-1 screenshot appears nearly uniform: " + diagnostics, colors.size >= 8)
+        assertTrue("W1-1 Compose loading overlay remained visible: " + diagnostics, !loadingOverlayVisible)
         assertTrue("W1-1 playfield still blank or obscured by its loader: " + diagnostics,
             sceneColors.size >= 6)
     }

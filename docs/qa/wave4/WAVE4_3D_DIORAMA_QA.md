@@ -58,7 +58,7 @@ The head of `feat/bobs-bunny-3d-diorama` now includes several follow-up qualific
 - Debug app-identity preflight: **PASS** (`python3 scripts/check_release_identity.py --profile debug`).
 - Local Gradle unit/build execution: **BLOCKED by runner network access**; the wrapper could not download Gradle 9.6.0 from `services.gradle.org`. The exact-head GitHub Android CI workflow nevertheless **PASSed** on `cc004dd6c8a82b3b0867673c82d35ae0cacb72bf` (run #44995554727).
 - Local emulator execution: **UNAVAILABLE**; `adb` is not installed in this executor.
-- The focused hosted emulator run on that exact head failed the screenshot color gate (run #44995554722). The new test change captures immediately after the completed GL frame and Compose loader dismissal; it keeps the existing scene-color threshold. Re-run and inspect the new screenshot/logcat before counting the visual gate.
+- The focused hosted emulator run on that exact head failed the screenshot color gate (run #44995554722). The attempted immediate capture on `90190fbb6da932841d37d8bdaa91ae407a799e13` also failed (`sceneColorClasses=1`, run #44996342895), while the later shell screencap artifact showed the rendered city. This proves the test was capturing a stale Compose/loading frame and then retaining a different screenshot after instrumentation. The follow-up now waits for a tagged loading overlay to disappear and saves the exact bitmap used for assertions to the artifact path; it keeps the existing scene-color threshold.
 
 ### Open release blockers
 
@@ -68,4 +68,4 @@ The head of `feat/bobs-bunny-3d-diorama` now includes several follow-up qualific
 4. Permanent Android application ID, Play registration and protected release signing/AAB (issue #5).
 5. Foldable/tablet resize qualification and platform-specific ports.
 
-**Decision:** Keep PR #2 Draft. The immutable-snapshot unit test and debug APK build passed on `cc004dd6c8a82b3b0867673c82d35ae0cacb72bf`; that head's visual emulator gate failed because a system ANR dialog obscured the screenshot after the game rendered. The immediate-capture test adjustment is awaiting exact-head rerun. Art, physical hardware and store gates remain independently open.
+**Decision:** Keep PR #2 Draft. The immutable-snapshot unit test and debug APK build passed on `cc004dd6c8a82b3b0867673c82d35ae0cacb72bf`. Visual QA failed on two heads: `cc004dd6` because Quickstep's ANR dialog covered the screenshot, then `90190fbb` because the Compose loading frame was sampled while a later shell screenshot showed the rendered scene. The updated test waits for loading-overlay removal and retains the exact bitmap it checks; exact-head rerun is pending. Art, physical hardware and store gates remain independently open.

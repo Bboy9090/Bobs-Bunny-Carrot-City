@@ -11,6 +11,7 @@ set +e
 mkdir -p reports/android-emulator
 adb shell wm size 1600x900 || true
 adb shell wm density 240 || true
+adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
 adb shell wm size > reports/android-emulator/display-size.txt || true
 adb shell wm density > reports/android-emulator/display-density.txt || true
 

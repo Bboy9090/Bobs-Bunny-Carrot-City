@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -137,7 +138,10 @@ fun Cartoon3DDioramaView(
         AndroidView(factory = { glView }, modifier = Modifier.fillMaxSize())
         if (!frameReady) {
             Column(
-                modifier = Modifier.fillMaxSize().background(Color(0xFF17243A)),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF17243A))
+                    .testTag("diorama_loading_overlay"),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
