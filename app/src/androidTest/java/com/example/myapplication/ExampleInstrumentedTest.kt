@@ -16,9 +16,19 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import android.content.ContentValues
+import android.graphics.Bitmap
+import android.opengl.GLSurfaceView
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.Build
 import android.os.Environment
+import android.os.Looper
+import android.os.SystemClock
 import android.provider.MediaStore
+import android.view.Choreographer
+import android.view.PixelCopy
+import android.view.View
+import android.view.ViewGroup
 import com.example.myapplication.audio.CartoonSoundEngine
 import com.example.myapplication.data.GameProgressRepository
 import com.example.myapplication.model.PlayableHero
@@ -28,12 +38,66 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
 
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
+
+    private fun findDioramaSurface(view: View): GLSurfaceView? {
+        if (view is GLSurfaceView) return view
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                findDioramaSurface(view.getChildAt(index))?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun sceneColorClassCount(bitmap: Bitmap): Int {
+        val colors = mutableSetOf<Int>()
+        for (gy in 1..10) {
+            for (gx in 1..16) {
+                val sx = ((0.20f + 0.60f * gx / 17f) * (bitmap.width - 1)).toInt()
+                val sy = ((0.35f + 0.37f * gy / 11f) * (bitmap.height - 1)).toInt()
+                colors.add(bitmap.getPixel(sx, sy) and 0x00F0F0F0)
+            }
+        }
+        return colors.size
+    }
+
+    private fun awaitNextAppFrame(timeoutMs: Long): Boolean {
+        val latch = CountDownLatch(1)
+        Handler(Looper.getMainLooper()).post {
+            Choreographer.getInstance().postFrameCallback { latch.countDown() }
+        }
+        return latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+    }
+
+    private data class SurfaceFrameCopy(val status: Int, val bitmap: Bitmap?)
+
+    private fun copyPresentedSurfaceFrame(surface: GLSurfaceView): SurfaceFrameCopy {
+        val bitmap = Bitmap.createBitmap(surface.width, surface.height, Bitmap.Config.ARGB_8888)
+        val latch = CountDownLatch(1)
+        val status = AtomicInteger(PixelCopy.ERROR_UNKNOWN)
+        val callbackThread = HandlerThread("W1-1-pixel-copy").apply { start() }
+        try {
+            PixelCopy.request(surface, bitmap, { result ->
+                status.set(result)
+                latch.countDown()
+            }, Handler(callbackThread.looper))
+            val completed = latch.await(2, TimeUnit.SECONDS)
+            val result = if (completed) status.get() else PixelCopy.ERROR_TIMEOUT
+            return if (result == PixelCopy.SUCCESS) SurfaceFrameCopy(result, bitmap)
+            else SurfaceFrameCopy(result, null).also { bitmap.recycle() }
+        } finally {
+            callbackThread.quitSafely()
+        }
+    }
 
     @Test
     fun useAppContext() {
@@ -174,6 +238,40 @@ class ExampleInstrumentedTest {
             loadingOverlayVisible = composeRule.onAllNodesWithTag("diorama_loading_overlay")
                 .fetchSemanticsNodes().isNotEmpty()
         }
+
+        // Synchronize against the actual SurfaceView buffer queue, not only
+        // the renderer callback (which runs before GLSurfaceView swaps buffers)
+        // or the Compose loader state. PixelCopy samples the presented GL surface
+        // and each retry is gated by a Choreographer frame, with a hard deadline.
+        val glSurface = findDioramaSurface(composeRule.activity.window.decorView)
+        var pixelCopyStatus = PixelCopy.ERROR_UNKNOWN
+        var pixelCopySceneColors = 0
+        var pixelCopyAttempts = 0
+        var pixelCopyDeadlineReached = false
+        var pixelCopyBitmap: Bitmap? = null
+        val pixelCopyDeadline = SystemClock.elapsedRealtime() + 5_000L
+        while (rendered3D && glSurface != null && pixelCopySceneColors < 6 &&
+            SystemClock.elapsedRealtime() < pixelCopyDeadline) {
+            awaitNextAppFrame(500)
+            val copy = copyPresentedSurfaceFrame(glSurface)
+            pixelCopyAttempts++
+            pixelCopyStatus = copy.status
+            copy.bitmap?.let { frame ->
+                val classes = sceneColorClassCount(frame)
+                if (classes > pixelCopySceneColors) {
+                    pixelCopyBitmap?.recycle()
+                    pixelCopyBitmap = frame
+                    pixelCopySceneColors = classes
+                } else {
+                    frame.recycle()
+                }
+            }
+        }
+        pixelCopyDeadlineReached = SystemClock.elapsedRealtime() >= pixelCopyDeadline
+        // Give SurfaceFlinger a Choreographer boundary after PixelCopy confirms
+        // nonuniform world pixels before capturing the full composed screen.
+        if (pixelCopySceneColors >= 6) awaitNextAppFrame(500)
+
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val manager = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
         val reportedGles = manager?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
@@ -237,12 +335,18 @@ class ExampleInstrumentedTest {
             }
             bitmap.recycle()
         }
+        pixelCopyBitmap?.recycle()
         val diagnostics = "sdk=" + android.os.Build.VERSION.SDK_INT +
             "\nreportedGles=0x" + reportedGles.toString(16) +
             "\nfirstFrameBefore=" + completedBefore +
             "\nfirstFrameAfter=" + completedAfter +
             "\n3dCompleted=" + rendered3D +
             "\nloadingOverlayVisible=" + loadingOverlayVisible +
+            "\npixelCopySurfaceFound=" + (glSurface != null) +
+            "\npixelCopyStatus=" + pixelCopyStatus +
+            "\npixelCopyAttempts=" + pixelCopyAttempts +
+            "\npixelCopyDeadlineReached=" + pixelCopyDeadlineReached +
+            "\npixelCopySceneColorClasses=" + pixelCopySceneColors +
             "\nscreenshotSaved=" + saved +
             "\nsampledColorClasses=" + colors.size +
             "\nsceneColorClasses=" + sceneColors.size + "\n"
@@ -255,6 +359,8 @@ class ExampleInstrumentedTest {
         assertTrue("W1-1 3D screenshot unavailable: " + diagnostics, saved)
         assertTrue("W1-1 screenshot appears nearly uniform: " + diagnostics, colors.size >= 8)
         assertTrue("W1-1 Compose loading overlay remained visible: " + diagnostics, !loadingOverlayVisible)
+        assertTrue("W1-1 SurfaceView did not present a diverse 3D scene: " + diagnostics,
+            glSurface != null && pixelCopySceneColors >= 6)
         assertTrue("W1-1 playfield still blank or obscured by its loader: " + diagnostics,
             sceneColors.size >= 6)
     }

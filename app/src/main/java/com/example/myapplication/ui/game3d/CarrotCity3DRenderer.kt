@@ -66,11 +66,13 @@ class CarrotCity3DRenderer(
     private var initialized = false
     private var firstFrameReported = false
     private var firstDrawStartedLogged = false
+    private var firstDrawAwaitingBufferSwap = false
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         initialized = false
         firstFrameReported = false
         firstDrawStartedLogged = false
+        firstDrawAwaitingBufferSwap = false
         // A newly created EGL surface must not inherit a camera dt from the
         // previous, possibly paused, renderer context.
         lastCameraFrameNs = 0L
@@ -111,6 +113,17 @@ class CarrotCity3DRenderer(
             GLES30.glClearColor(0.07f, 0.12f, 0.22f, 1f)
             GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
             return
+        }
+        // Renderer callbacks run before GLSurfaceView swaps their EGL buffer.
+        // Seeing the following draw begin proves the preceding scene buffer has
+        // been submitted, so Compose can remove the loader without racing the
+        // first scene buffer's presentation.
+        if (firstDrawAwaitingBufferSwap && !firstFrameReported) {
+            firstDrawAwaitingBufferSwap = false
+            firstFrameReported = true
+            val total = completedFirstFrames.incrementAndGet()
+            Log.i("BobsBunnyDiorama", "First GLES3 scene frame presented; receipt=" + total)
+            onFirstFrame()
         }
         fpsFrames++
         val now = System.nanoTime()
@@ -175,12 +188,7 @@ class CarrotCity3DRenderer(
         drawBob3D(playerX3d, playerY3d, t, frame)
         drawParticles3D(camX3d, frame)
         drawForegroundFraming(camX3d)
-        if (!firstFrameReported) {
-            firstFrameReported = true
-            val total = completedFirstFrames.incrementAndGet()
-            Log.i("BobsBunnyDiorama", "First GLES3 scene frame complete; receipt=" + total)
-            onFirstFrame()
-        }
+        if (!firstFrameReported) firstDrawAwaitingBufferSwap = true
     }
 
     private fun drawMesh(

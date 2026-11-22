@@ -77,3 +77,12 @@ The head of `feat/bobs-bunny-3d-diorama` now includes several follow-up qualific
 - Android CI run #44997165462 is still in progress as of this ledger update.
 
 **Decision:** keep PR #2 Draft. The latest emulator attempt is a harness-mode failure, not a pass or an app regression result. Previous visual failures remain recorded above. Owner art, API 26/physical hardware, human gameplay and store-signing gates remain open.
+
+### Presented-frame investigation on `e53fc9e2ff5a51b6120b624853400fb0232894f0`
+
+- Android CI run #44997435398 **PASSed** (Unit Tests & Debug APK).
+- API 35 emulator Visual QA run #44997435396 **FAILED** after executing instrumentation. Exact diagnostics: `reportedGles=0x30000`, first-frame receipt `0 → 1`, `3dCompleted=true`, `loadingOverlayVisible=false`, `screenshotSaved=true`, `sampledColorClasses=16`, `sceneColorClasses=1`. The retained 1600×900 screenshot has the gameplay HUD over a nearly uniform dark viewport. This is a genuine visible-scene failure, not the earlier system dialog or stale screenshot issue.
+- Logcat confirms stage and snapshot initialization, `onSurfaceCreated`/`onSurfaceChanged(1600x900)`, and `onDrawFrame` entry followed by a receipt 2 ms later. No GL initialization error is logged. The receipt was emitted at the end of `onDrawFrame`, before `GLSurfaceView` swapped the rendered buffer. A nonuniform frame was not yet demonstrated at the screen or surface level.
+- Follow-up under test: only report first-frame readiness when the next renderer callback proves the prior draw has passed through buffer swap, and directly sample the `GLSurfaceView` with PixelCopy while advancing on Choreographer frame boundaries. Both the direct-surface and composed-screen scene-color checks retain the existing minimum of 6 classes; retries are bounded to 5 seconds and add no fixed sleep.
+
+**Decision:** keep PR #2 Draft. The new frame/surface synchronization is unverified pending exact-head Android CI and API 35 emulator reruns. Do not count #44997435396 as visual QA success.
