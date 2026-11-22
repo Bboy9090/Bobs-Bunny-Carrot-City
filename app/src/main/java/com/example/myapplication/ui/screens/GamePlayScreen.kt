@@ -588,7 +588,6 @@ fun GamePlayScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .testTag("gameplay_controls")
                 .systemBarsPadding()
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -598,12 +597,14 @@ fun GamePlayScreen(
                 ArcadeHoldButton(
                     label = "◀",
                     subtitle = "LEFT",
+                    qaTag = "gameplay_control_left",
                     color = Color(0xCC263238),
                     onPressChanged = { engine.inputLeft = it }
                 )
                 ArcadeHoldButton(
                     label = "🕳️",
                     subtitle = "BURROW",
+                    qaTag = "gameplay_control_burrow",
                     color = Color(0xCC795548),
                     onPressChanged = {
                         if (it) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -613,6 +614,7 @@ fun GamePlayScreen(
                 ArcadeHoldButton(
                     label = "▶",
                     subtitle = "RIGHT",
+                    qaTag = "gameplay_control_right",
                     color = Color(0xCC263238),
                     onPressChanged = { engine.inputRight = it }
                 )
@@ -622,6 +624,7 @@ fun GamePlayScreen(
                 ArcadeHoldButton(
                     label = "🤖",
                     subtitle = if (engine.sidekickDroneEnabled) "P2 ON" else "P2 OFF",
+                    qaTag = "gameplay_control_drone",
                     color = Color(0xCC00838F),
                     onPressChanged = { pressed ->
                         if (pressed) {
@@ -633,6 +636,7 @@ fun GamePlayScreen(
                 ArcadeHoldButton(
                     label = "🌈",
                     subtitle = activeHero.specialMoveLabel,
+                    qaTag = "gameplay_control_special",
                     color = Color(0xCCFF4081),
                     onPressChanged = { pressed ->
                         if (pressed) {
@@ -644,6 +648,7 @@ fun GamePlayScreen(
                 ArcadeHoldButton(
                     label = "🥕⬆",
                     subtitle = "HOP / EARS",
+                    qaTag = "gameplay_control_jump",
                     color = Color(0xCC00E676),
                     onPressChanged = { pressed ->
                         engine.inputJumpHeld = pressed
@@ -775,6 +780,7 @@ private fun ArcadeHoldButton(
     label: String,
     subtitle: String,
     color: Color,
+    qaTag: String,
     onPressChanged: (Boolean) -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -785,6 +791,7 @@ private fun ArcadeHoldButton(
     Box(
         modifier = Modifier
             .size(58.dp)
+            .testTag(qaTag)
             .clip(CircleShape)
             .background(
                 brush = Brush.verticalGradient(

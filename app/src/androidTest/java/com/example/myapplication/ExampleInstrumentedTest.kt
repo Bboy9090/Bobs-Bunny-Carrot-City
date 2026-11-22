@@ -238,8 +238,6 @@ class ExampleInstrumentedTest {
                 composeRule.onAllNodesWithTag("gameplay_quip")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            assertHudElementsDoNotOverlap("gameplay_quip", "gameplay_stage_progress")
-            assertHudElementsDoNotOverlap("gameplay_quip", "gameplay_controls")
         }
         // The GL thread increments its receipt immediately before posting the
         // Compose frameReady update. Drive subsequent frames until the loading
@@ -370,6 +368,24 @@ class ExampleInstrumentedTest {
             .bufferedWriter().use { it.write(diagnostics) }
         android.util.Log.i("BobsBunnyDiorama", "W1-1 hosted QA: " +
             diagnostics.replace("\n", " | "))
+
+        // Compare against each real 58dp hit target, not the full-width layout
+        // row that positions the controls along the bottom edge.
+        if (rendered3D) {
+            assertTrue("W1-1 dialogue card did not appear for geometry QA", 
+                composeRule.onAllNodesWithTag("gameplay_quip").fetchSemanticsNodes().isNotEmpty())
+            assertHudElementsDoNotOverlap("gameplay_quip", "gameplay_stage_progress")
+            listOf(
+                "gameplay_control_left",
+                "gameplay_control_burrow",
+                "gameplay_control_right",
+                "gameplay_control_drone",
+                "gameplay_control_special",
+                "gameplay_control_jump"
+            ).forEach { controlTag ->
+                assertHudElementsDoNotOverlap("gameplay_quip", controlTag)
+            }
+        }
 
         assertTrue("GLES3 did not complete first W1-1 frame: " + diagnostics, rendered3D)
         assertTrue("W1-1 3D screenshot unavailable: " + diagnostics, saved)
