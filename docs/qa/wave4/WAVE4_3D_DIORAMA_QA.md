@@ -86,3 +86,12 @@ The head of `feat/bobs-bunny-3d-diorama` now includes several follow-up qualific
 - Follow-up under test: only report first-frame readiness when the next renderer callback proves the prior draw has passed through buffer swap, and directly sample the `GLSurfaceView` with PixelCopy while advancing on Choreographer frame boundaries. Both the direct-surface and composed-screen scene-color checks retain the existing minimum of 6 classes; retries are bounded to 5 seconds and add no fixed sleep.
 
 **Decision:** keep PR #2 Draft. The new frame/surface synchronization is unverified pending exact-head Android CI and API 35 emulator reruns. Do not count #44997435396 as visual QA success.
+
+### Surface-pixel proof and API 35 system-overlay result on `7d174d5a6b368f27bc62a77fa089bf2a85d61c14`
+
+- Android CI run #44998161734 **PASSed** (JVM unit tests and debug APK).
+- Emulator Visual QA run #44998161780 **FAILED**. PixelCopy found the `GLSurfaceView`, returned status 0 on its first request, and measured 30 central scene color classes, confirming the native 3D surface buffer contains the rendered world. The full composed screenshot measured 3 central scene classes because Android's **Quickstep isn't responding** modal covered the game. The modal is retained in the artifact and remains a failed visual qualification; no test dismisses or crops it.
+- Full instrumentation log shows SurfaceSyncGroup transaction-ready timeouts at 07:29:03.545–.546, app `Skipped 96 frames`, HWUI Davey frames of 1.608 s and 1.435 s, and SwiftShader frame stats up to 1453 ms on HWUI and 102 ms on the GL thread. No `ANR in` or `Input dispatching timed out` diagnostic was captured in the test log. The direct surface and screenshot disagree only because the system modal obscures the latter.
+- Hosted-only profile update: reduce the API 35 SwiftShader emulator viewport from 1600×900 to 1280×720 (still landscape 16:9) to reduce raster work after the measured SurfaceSyncGroup/HWUI stalls. The player app and visual thresholds are unchanged. The next exact-head rerun must show the modal-free **full-screen** scene; PixelCopy alone cannot pass the UI screenshot gate.
+
+**Decision:** keep Draft and preserve #44998161780 as a failed API 35 visual attempt. Physical GPU, sustained frame pacing, API 26 and store gates remain unverified.

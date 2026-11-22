@@ -5,11 +5,13 @@ set -euo pipefail
 # evidence even when test assertions fail; never override the test exit status.
 set +e
 # Reduce software-GL framebuffer pressure on the hosted emulator and record
-# the effective dimensions. Android may otherwise spend minutes rasterizing
-# the default 2400x1080 landscape frame while Quickstep/Launcher ANRs.
-# This is a documented hosted-test viewport, not a change to the player app.
+# the effective dimensions. At 1600x900 the API 35 SwiftShader run showed
+# SurfaceSyncGroup timeouts, 1.4-1.6s HWUI frames and a Quickstep ANR dialog.
+# 1280x720 preserves the 16:9 gameplay layout while reducing pixel work by 36%.
+# This is a documented hosted-test viewport, not a change to the player app;
+# physical-device frame pacing remains a separate open qualification gate.
 mkdir -p reports/android-emulator
-adb shell wm size 1600x900 || true
+adb shell wm size 1280x720 || true
 adb shell wm density 240 || true
 adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
 adb shell wm size > reports/android-emulator/display-size.txt || true
