@@ -10,6 +10,7 @@ import com.example.myapplication.ui.game3d.DioramaFrameSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
@@ -58,6 +59,21 @@ class DioramaFrameSnapshotTest {
         bridge.publish(engine)
         assertEquals(engine.playerX, bridge.snapshot().playerX)
         assertNotSame(original, bridge.snapshot())
+    }
+
+    @Test
+    fun publishedCollectionsRejectMutationThroughMutableListCast() {
+        val frame = DioramaFrameSnapshot.capture(newEngine())
+
+        assertThrows(UnsupportedOperationException::class.java) {
+            (frame.stageData.platforms as MutableList<*>).clear()
+        }
+        assertThrows(UnsupportedOperationException::class.java) {
+            (frame.stageData.carrots as MutableList<*>).clear()
+        }
+        assertThrows(UnsupportedOperationException::class.java) {
+            (frame.particles as MutableList<*>).clear()
+        }
     }
 
     @Test

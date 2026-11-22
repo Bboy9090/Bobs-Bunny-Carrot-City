@@ -6,6 +6,7 @@ import com.example.myapplication.model.CartoonHealthState
 import com.example.myapplication.model.EnemyKind
 import com.example.myapplication.model.PlatformKind
 import com.example.myapplication.model.PowerUpType
+import java.util.Collections
 
 /**
  * Render-only data. No mutable engine entities, Compose mutable state or
@@ -79,6 +80,14 @@ data class DioramaFrameSnapshot(
     val particles: List<DioramaParticle>
 ) {
     companion object {
+        /**
+         * Kotlin's `List` is only a read-only interface; `map` returns a list that can
+         * still be cast back to `MutableList`. Wrap each detached copy so a future
+         * renderer or diagnostic consumer cannot mutate a frame after publication.
+         */
+        private inline fun <T, R> Iterable<T>.mapFrozen(transform: (T) -> R): List<R> =
+            Collections.unmodifiableList(map(transform))
+
         /** Only call on the gameplay/Compose thread, after engine.stepFrame. */
         fun capture(engine: CartoonStageEngine): DioramaFrameSnapshot {
             val stage = engine.stageData
@@ -102,12 +111,12 @@ data class DioramaFrameSnapshot(
                 earSpinAngle = engine.earSpinAngle,
                 stageData = DioramaStageSnapshot(
                     goalX = stage.goalX,
-                    platforms = stage.platforms.map { DioramaPlatform(it.x, it.y, it.width, it.height, it.kind) },
-                    carrots = stage.carrots.map { DioramaCarrot(it.x, it.y, it.isGoldenShard, it.collected) },
-                    powerUps = stage.powerUps.map { DioramaPowerUp(it.x, it.y, it.type, it.collected) },
-                    enemies = stage.enemies.map { DioramaEnemy(it.x, it.y, it.kind, it.isFlattenedAccordion) }
+                    platforms = stage.platforms.mapFrozen { DioramaPlatform(it.x, it.y, it.width, it.height, it.kind) },
+                    carrots = stage.carrots.mapFrozen { DioramaCarrot(it.x, it.y, it.isGoldenShard, it.collected) },
+                    powerUps = stage.powerUps.mapFrozen { DioramaPowerUp(it.x, it.y, it.type, it.collected) },
+                    enemies = stage.enemies.mapFrozen { DioramaEnemy(it.x, it.y, it.kind, it.isFlattenedAccordion) }
                 ),
-                particles = engine.particles.map { DioramaParticle(it.x, it.y, it.color, it.alpha) }
+                particles = engine.particles.mapFrozen { DioramaParticle(it.x, it.y, it.color, it.alpha) }
             )
         }
     }
