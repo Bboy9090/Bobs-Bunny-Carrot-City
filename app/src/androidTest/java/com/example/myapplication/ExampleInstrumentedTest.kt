@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -47,6 +48,18 @@ class ExampleInstrumentedTest {
 
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
+
+    private fun assertNodeWithinViewport(tag: String) {
+        val nodeBounds = composeRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        val viewportBounds = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            "$tag extends beyond viewport: $nodeBounds vs $viewportBounds",
+            nodeBounds.left >= viewportBounds.left &&
+                nodeBounds.right <= viewportBounds.right &&
+                nodeBounds.top >= viewportBounds.top &&
+                nodeBounds.bottom <= viewportBounds.bottom
+        )
+    }
 
     private fun assertHudElementsDoNotOverlap(firstTag: String, secondTag: String) {
         val first = composeRule.onNodeWithTag(firstTag).fetchSemanticsNode().boundsInRoot
@@ -375,6 +388,8 @@ class ExampleInstrumentedTest {
             assertTrue("W1-1 dialogue card did not appear for geometry QA", 
                 composeRule.onAllNodesWithTag("gameplay_quip").fetchSemanticsNodes().isNotEmpty())
             assertHudElementsDoNotOverlap("gameplay_quip", "gameplay_stage_progress")
+            composeRule.onNodeWithTag("gameplay_pause").assertIsDisplayed()
+            assertNodeWithinViewport("gameplay_pause")
             listOf(
                 "gameplay_control_left",
                 "gameplay_control_burrow",

@@ -7,6 +7,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -228,7 +230,7 @@ fun GamePlayScreen(
     val progressFraction = (engine.playerX / engine.stageData.goalX).coerceIn(0f, 1f)
     val bossEntity = engine.stageData.enemies.firstOrNull { it.kind.isBoss && it.bossHp > 0 }
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .focusRequester(focusRequester)
@@ -286,6 +288,10 @@ fun GamePlayScreen(
                 }
             }
     ) {
+        // The compact header is used only on narrow landscape windows (for
+        // example 960x540 at 240dpi); wide layouts keep the established HUD.
+        val compactHeader = maxWidth < 720.dp
+
         // 1. Live 3D Diorama (W1-1 Vertical Slice) or 2.5D Cartoon Stage Canvas
         if (use3DDiorama) {
             Cartoon3DDioramaView(
@@ -334,6 +340,8 @@ fun GamePlayScreen(
             ) {
                 Column(
                     modifier = Modifier
+                        .weight(1f)
+                        .widthIn(min = 0.dp, max = 330.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(
                             brush = Brush.verticalGradient(
@@ -341,20 +349,27 @@ fun GamePlayScreen(
                             )
                         )
                         .border(2.5.dp, Color(0xFFFFD700), RoundedCornerShape(14.dp))
-                        .padding(horizontal = 14.dp, vertical = 9.dp)
+                        .padding(
+                            horizontal = if (compactHeader) 8.dp else 14.dp,
+                            vertical = if (compactHeader) 6.dp else 9.dp
+                        )
                 ) {
                     Text(
                         text = "${stageConfig.code} • ${stageConfig.title} (${activeHero.displayName})",
                         modifier = Modifier.testTag("gameplay_stage_title"),
                         color = Color(0xFFFFD700),
                         fontWeight = FontWeight.Black,
-                        fontSize = 13.sp
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${engine.healthState.displayName} • ${activeMutator.emoji} ${activeMutator.title} • ⏱️ ${"%.1f".format(engine.stageTimeSeconds)}s",
                         color = Color(0xFF00E5FF),
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -367,27 +382,30 @@ fun GamePlayScreen(
                             )
                         )
                         .border(2.5.dp, Color(0xFF00E5FF), RoundedCornerShape(14.dp))
-                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                        .padding(
+                        horizontal = if (compactHeader) 8.dp else 14.dp,
+                        vertical = if (compactHeader) 6.dp else 9.dp
+                    ),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(if (compactHeader) 8.dp else 12.dp)
                 ) {
                     Text(
                         text = "🥕 ${engine.collectedCarrots}",
                         color = Color(0xFFFF9100),
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 15.sp
+                        fontSize = if (compactHeader) 13.sp else 15.sp
                     )
                     Text(
                         text = "🌟 ${engine.collectedGoldenShards}",
                         color = Color(0xFFFFD700),
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 15.sp
+                        fontSize = if (compactHeader) 13.sp else 15.sp
                     )
                     Text(
                         text = "${engine.swagMultiplier}x SWAG",
                         color = Color(0xFF00E676),
                         fontWeight = FontWeight.Black,
-                        fontSize = 14.sp
+                        fontSize = if (compactHeader) 12.sp else 14.sp
                     )
                 }
 
@@ -400,6 +418,11 @@ fun GamePlayScreen(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (use3DDiorama) Color(0xFF00E5FF) else Color(0xFF455A64)
                         ),
+                        contentPadding = if (compactHeader) {
+                            PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        } else {
+                            PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                        },
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .border(2.dp, Color.White, RoundedCornerShape(12.dp))
@@ -407,17 +430,29 @@ fun GamePlayScreen(
                         Text(
                             text = if (use3DDiorama) "3D" else "2D",
                             fontWeight = FontWeight.Black,
-                            color = if (use3DDiorama) Color.Black else Color.White
+                            color = if (use3DDiorama) Color.Black else Color.White,
+                            maxLines = 1
                         )
                     }
                     Button(
                         onClick = { isPaused = !isPaused },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                        contentPadding = if (compactHeader) {
+                            PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        } else {
+                            PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                        },
                         modifier = Modifier
+                            .testTag("gameplay_pause")
                             .clip(RoundedCornerShape(12.dp))
                             .border(2.5.dp, Color.White, RoundedCornerShape(12.dp))
                     ) {
-                        Text(if (isPaused) "Resume" else "Pause", fontWeight = FontWeight.Black, color = Color.White)
+                        Text(
+                            text = if (isPaused) "Resume" else "Pause",
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            maxLines = 1
+                        )
                     }
                 }
             }
