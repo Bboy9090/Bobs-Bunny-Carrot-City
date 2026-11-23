@@ -58,18 +58,21 @@ data class PlayerProfileState(
         get() = (goldenShards.coerceAtMost(10)) / 10f
 }
 
-class GameProgressRepository(context: Context) {
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("bobs_bunny_carrot_city_prefs", Context.MODE_PRIVATE)
+class GameProgressRepository internal constructor(
+    private val prefs: SharedPreferences
+) {
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences("bobs_bunny_carrot_city_prefs", Context.MODE_PRIVATE)
+    )
 
     private val _state = MutableStateFlow(loadState())
     val state: StateFlow<PlayerProfileState> = _state.asStateFlow()
 
     private fun loadState(): PlayerProfileState {
-        val carrots = prefs.getInt("total_carrots", 250)
-        val shards = prefs.getInt("golden_shards", 5)
+        val carrots = prefs.getInt("total_carrots", 250).coerceAtLeast(0)
+        val shards = prefs.getInt("golden_shards", 5).coerceAtLeast(0)
         val unlocked = maxOf(prefs.getInt("highest_unlocked_stage", 20), 20)
-        val mpWins = prefs.getInt("mp_wins", 0)
+        val mpWins = prefs.getInt("mp_wins", 0).coerceAtLeast(0)
         val heroId = prefs.getString("selected_hero_id", PlayableHero.BOBS_BUNNY.id) ?: PlayableHero.BOBS_BUNNY.id
         val mutatorId = prefs.getString("active_mutator_id", DailyWeatherMutator.CLEAR_SKIES.id)
             ?: DailyWeatherMutator.CLEAR_SKIES.id
@@ -86,12 +89,12 @@ class GameProgressRepository(context: Context) {
         val owned = prefs.getStringSet("owned_items", ownedDefault)?.toSet() ?: ownedDefault
 
         val stars = (1..20).associateWith { id ->
-            prefs.getInt("stage_stars_$id", 0)
+            prefs.getInt("stage_stars_$id", 0).coerceIn(0, 3)
         }
         val bestTimes = mutableMapOf<Int, Float>()
         for (id in 1..20) {
             val t = prefs.getFloat("stage_best_time_$id", -1f)
-            if (t > 0f) bestTimes[id] = t
+            if (t.isFinite() && t > 0f) bestTimes[id] = t
         }
 
         return PlayerProfileState(
@@ -153,13 +156,15 @@ class GameProgressRepository(context: Context) {
     }
 
     fun claimCityQuest(questId: String, rewardCarrots: Int, rewardShards: Int): Boolean {
+        val cleanId = questId.trim()
+        if (cleanId.isEmpty()) return false
         val current = _state.value
-        if (current.claimedQuestIds.contains(questId)) return false
+        if (current.claimedQuestIds.contains(cleanId)) return false
         saveState(
             current.copy(
-                totalCarrots = current.totalCarrots + rewardCarrots,
-                goldenShards = current.goldenShards + rewardShards,
-                claimedQuestIds = current.claimedQuestIds + questId
+                totalCarrots = current.totalCarrots + rewardCarrots.coerceAtLeast(0),
+                goldenShards = current.goldenShards + rewardShards.coerceAtLeast(0),
+                claimedQuestIds = current.claimedQuestIds + cleanId
             )
         )
         return true
@@ -172,13 +177,14 @@ class GameProgressRepository(context: Context) {
         starsEarned: Int,
         clearTimeSeconds: Float = 0f
     ) {
+        if (stageId !in 1..20) return
         val current = _state.value
         val previousStars = current.stageStars[stageId] ?: 0
         val updatedStars = current.stageStars.toMutableMap().apply {
             put(stageId, maxOf(previousStars, starsEarned.coerceIn(1, 3)))
         }
         val updatedTimes = current.bestStageTimesSec.toMutableMap()
-        if (clearTimeSeconds > 0f) {
+        if (clearTimeSeconds.isFinite() && clearTimeSeconds > 0f) {
             val prevBest = updatedTimes[stageId]
             if (prevBest == null || clearTimeSeconds < prevBest) {
                 updatedTimes[stageId] = clearTimeSeconds
@@ -187,8 +193,8 @@ class GameProgressRepository(context: Context) {
         val nextUnlocked = maxOf(current.highestUnlockedStage, (stageId + 1).coerceAtMost(20))
         saveState(
             current.copy(
-                totalCarrots = current.totalCarrots + carrotsEarned,
-                goldenShards = current.goldenShards + shardsEarned,
+                totalCarrots = current.totalCarrots + carrotsEarned.coerceAtLeast(0),
+                goldenShards = current.goldenShards + shardsEarned.coerceAtLeast(0),
                 highestUnlockedStage = nextUnlocked,
                 stageStars = updatedStars,
                 bestStageTimesSec = updatedTimes
@@ -208,6 +214,7 @@ class GameProgressRepository(context: Context) {
     }
 
     fun purchaseOrEquipItem(itemId: String, categoryName: String, cost: Int): Boolean {
+        if (cost < 0 || itemId.isBlank()) return false
         val current = _state.value
         val alreadyOwned = current.ownedItemIds.contains(itemId)
         if (!alreadyOwned && current.totalCarrots < cost) {
@@ -222,7 +229,7 @@ class GameProgressRepository(context: Context) {
             "KICKS" -> current.copy(totalCarrots = newCarrots, ownedItemIds = newOwned, equippedKicksId = itemId)
             "TRAIL" -> current.copy(totalCarrots = newCarrots, ownedItemIds = newOwned, equippedTrailId = itemId)
             "BADGE" -> current.copy(totalCarrots = newCarrots, ownedItemIds = newOwned, equippedBadgeId = itemId)
-            else -> current
+            else -> return false
         }
         saveState(updated)
         return true
