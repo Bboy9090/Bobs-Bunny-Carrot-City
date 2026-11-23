@@ -388,6 +388,8 @@ class ExampleInstrumentedTest {
             assertTrue("W1-1 dialogue card did not appear for geometry QA", 
                 composeRule.onAllNodesWithTag("gameplay_quip").fetchSemanticsNodes().isNotEmpty())
             assertHudElementsDoNotOverlap("gameplay_quip", "gameplay_stage_progress")
+            assertHudElementsDoNotOverlap("gameplay_title_panel", "gameplay_scoreboard")
+            assertHudElementsDoNotOverlap("gameplay_scoreboard", "gameplay_header_actions")
             composeRule.onNodeWithTag("gameplay_pause").assertIsDisplayed()
             assertNodeWithinViewport("gameplay_pause")
             listOf(

@@ -340,8 +340,8 @@ fun GamePlayScreen(
             ) {
                 Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .widthIn(min = 0.dp, max = 330.dp)
+                        .width(if (compactHeader) 220.dp else 330.dp)
+                        .testTag("gameplay_title_panel")
                         .clip(RoundedCornerShape(14.dp))
                         .background(
                             brush = Brush.verticalGradient(
@@ -375,6 +375,7 @@ fun GamePlayScreen(
 
                 Row(
                     modifier = Modifier
+                        .testTag("gameplay_scoreboard")
                         .clip(RoundedCornerShape(14.dp))
                         .background(
                             brush = Brush.verticalGradient(
@@ -409,7 +410,11 @@ fun GamePlayScreen(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.testTag("gameplay_header_actions"),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Button(
                         onClick = {
                             fallbackNotice = null
