@@ -14,8 +14,13 @@ concurrency:
 
 jobs:
   emulator-visual-qa:
-    name: API 35 W1-1 3D Emulator QA
+    name: API 35 W1-1 3D Emulator QA (${{ matrix.viewport }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        viewport: [1280x720, 960x540]
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
@@ -40,6 +45,8 @@ jobs:
 
       - name: Run Android instrumentation and capture actual W1-1 GLES3 frame
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          BOBS_BUNNY_QA_VIEWPORT: ${{ matrix.viewport }}
         with:
           api-level: 35
           # Standard AOSP image has a complete GLES3 surface stack without
@@ -59,7 +66,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bobs-bunny-w1-1-android-emulator-qa
+          name: bobs-bunny-${{ matrix.viewport }}-w1-1-android-emulator-qa
           path: reports/android-emulator/
           if-no-files-found: warn
 
@@ -67,7 +74,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bobs-bunny-api35-instrumentation
+          name: bobs-bunny-${{ matrix.viewport }}-api35-instrumentation
           path: |
             app/build/outputs/androidTest-results/connected/
             app/build/reports/androidTests/connected/

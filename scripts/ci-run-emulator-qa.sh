@@ -1,46 +1,42 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run inside Android emulator runner while adb is attached. Capture diagnostic
-# evidence even when test assertions fail; never override the test exit status.
+# Run one viewport per fresh Android emulator job. Reusing a SwiftShader AVD
+# across multiple launches caused Quickstep/Launcher ANR dialogs at 960x540.
+# Keep test evidence for both viewport sizes independent and do not dismiss
+# system overlays or change the strict scene-color assertions.
 set +e
 output_dir="reports/android-emulator"
 mkdir -p "$output_dir"
-# Keep the same 16:9 ratio while qualifying two useful landscape sizes. The
-# second run checks the quip's safe slot against actual HUD/control bounds at
-# a narrower viewport; the player app remains density-independent.
+size="${BOBS_BUNNY_QA_VIEWPORT:-1280x720}"
+case "$size" in
+  1280x720|960x540) ;;
+  *) echo "Unsupported QA viewport: $size"; exit 2 ;;
+esac
+label="$size"
+adb shell wm size "$size" || true
 adb shell wm density 240 || true
+adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
+adb shell wm size > "$output_dir/display-size-$label.txt" || true
+adb shell wm density > "$output_dir/display-density-$label.txt" || true
 
-run_visual_viewport() {
-  local size="$1"
-  local label="$2"
-  adb shell wm size "$size" || return $?
-  adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
-  adb shell wm size > "$output_dir/display-size-${label}.txt" || true
-  adb shell wm density > "$output_dir/display-density-${label}.txt" || true
-  ./gradlew connectedDebugAndroidTest --console=plain \
-    '-Pandroid.testInstrumentationRunnerArguments.class=com.example.myapplication.ExampleInstrumentedTest#w1One_visualCaptureWaitsForFirst3dDraw'
-  local visual_status=$?
-  if ! adb pull /sdcard/Download/bobs_w1_1_visual_qa.png "$output_dir/w1-1-${label}.png"; then
-    echo "No retained screenshot for viewport $size"
-    return 1
-  fi
-  return "$visual_status"
-}
-
-test_status=0
-run_visual_viewport 1280x720 1280x720
-test_status=$?
-if [ "$test_status" -eq 0 ]; then
-  run_visual_viewport 960x540 960x540
-  test_status=$?
+# Run visual qualification alone first. The matrix gives each viewport a fresh
+# emulator so the second-size result is not contaminated by another launch.
+./gradlew connectedDebugAndroidTest --console=plain \
+  '-Pandroid.testInstrumentationRunnerArguments.class=com.example.myapplication.ExampleInstrumentedTest#w1One_visualCaptureWaitsForFirst3dDraw'
+visual_status=$?
+if adb pull /sdcard/Download/bobs_w1_1_visual_qa.png "$output_dir/w1-1-$label.png"; then
+  file "$output_dir/w1-1-$label.png" | tee "$output_dir/image-info.txt"
+  sha256sum "$output_dir/w1-1-$label.png" | tee "$output_dir/SHA256SUMS.txt"
+else
+  rm -f "$output_dir/w1-1-$label.png"
 fi
 
-# Restore the stable primary viewport before running the full instrumentation
-# suite and exporting the compatibility screenshot.
-adb shell wm size 1280x720 || true
-adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
-if [ "$test_status" -eq 0 ]; then
+test_status=$visual_status
+if [ "$visual_status" -eq 0 ]; then
+  # Run the complete suite on this viewport; the 1280x720 job is the primary
+  # compatibility run and the 960x540 job also checks compact-header geometry.
+  adb shell rm -f /sdcard/Download/bobs_w1_1_visual_qa.png || true
   ./gradlew connectedDebugAndroidTest --console=plain
   test_status=$?
 fi
@@ -58,25 +54,19 @@ grep 'W1-1 hosted QA:' "$output_dir/diorama-gl-logcat.txt" > "$output_dir/w1-1-r
 if test ! -s "$output_dir/w1-1-render-diagnostics.txt"; then
   echo "Render test did not produce a logged diagnostic receipt" > "$output_dir/w1-1-render-diagnostics.txt"
 fi
+
 if adb pull /sdcard/Download/bobs_w1_1_visual_qa.png "$output_dir/w1-1-device-capture.png"; then
-  file "$output_dir/w1-1-device-capture.png" | tee "$output_dir/image-info.txt"
-  sha256sum "$output_dir/w1-1-device-capture.png" | tee "$output_dir/SHA256SUMS.txt"
+  file "$output_dir/w1-1-device-capture.png" | tee -a "$output_dir/image-info.txt"
+  sha256sum "$output_dir/w1-1-device-capture.png" | tee -a "$output_dir/SHA256SUMS.txt"
 else
   rm -f "$output_dir/w1-1-device-capture.png"
 fi
-for image in "$output_dir/w1-1-1280x720.png" "$output_dir/w1-1-960x540.png"; do
-  if test -s "$image"; then
-    file "$image" | tee -a "$output_dir/image-info.txt"
-    sha256sum "$image" | tee -a "$output_dir/SHA256SUMS.txt"
-  fi
-done
 
 if [ "$test_status" -ne 0 ]; then
-  echo "Android instrumentation failed (exit $test_status); diagnostics and viewport screenshots retained in artifacts."
+  echo "Android instrumentation failed (exit $test_status); diagnostics and viewport screenshot retained in artifacts."
   exit "$test_status"
 fi
 
+test -s "$output_dir/w1-1-$label.png"
 test -s "$output_dir/w1-1-device-capture.png"
-test -s "$output_dir/w1-1-1280x720.png"
-test -s "$output_dir/w1-1-960x540.png"
-echo "Verified W1-1 first-frame screenshots on API 35 emulator at 1280x720 and 960x540."
+echo "Verified W1-1 first-frame screenshot on API 35 emulator at $size."
