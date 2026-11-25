@@ -1,11 +1,14 @@
 package com.example.myapplication
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -13,20 +16,109 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import android.content.ContentValues
+import android.graphics.Bitmap
+import android.opengl.GLSurfaceView
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Build
+import android.os.Environment
+import android.os.Looper
+import android.os.SystemClock
+import android.provider.MediaStore
+import android.view.Choreographer
+import android.view.PixelCopy
+import android.view.View
+import android.view.ViewGroup
 import com.example.myapplication.audio.CartoonSoundEngine
 import com.example.myapplication.data.GameProgressRepository
 import com.example.myapplication.model.PlayableHero
+import com.example.myapplication.ui.game3d.CarrotCity3DRenderer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
 
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
+
+    private fun assertNodeWithinViewport(tag: String) {
+        val nodeBounds = composeRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        val viewportBounds = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            "$tag extends beyond viewport: $nodeBounds vs $viewportBounds",
+            nodeBounds.left >= viewportBounds.left &&
+                nodeBounds.right <= viewportBounds.right &&
+                nodeBounds.top >= viewportBounds.top &&
+                nodeBounds.bottom <= viewportBounds.bottom
+        )
+    }
+
+    private fun assertHudElementsDoNotOverlap(firstTag: String, secondTag: String) {
+        val first = composeRule.onNodeWithTag(firstTag).fetchSemanticsNode().boundsInRoot
+        val second = composeRule.onNodeWithTag(secondTag).fetchSemanticsNode().boundsInRoot
+        val overlaps = first.left < second.right && first.right > second.left &&
+            first.top < second.bottom && first.bottom > second.top
+        assertTrue("$firstTag overlaps $secondTag: $first vs $second", !overlaps)
+    }
+
+    private fun findDioramaSurface(view: View): GLSurfaceView? {
+        if (view is GLSurfaceView) return view
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                findDioramaSurface(view.getChildAt(index))?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun sceneColorClassCount(bitmap: Bitmap): Int {
+        val colors = mutableSetOf<Int>()
+        for (gy in 1..10) {
+            for (gx in 1..16) {
+                val sx = ((0.20f + 0.60f * gx / 17f) * (bitmap.width - 1)).toInt()
+                val sy = ((0.35f + 0.37f * gy / 11f) * (bitmap.height - 1)).toInt()
+                colors.add(bitmap.getPixel(sx, sy) and 0x00F0F0F0)
+            }
+        }
+        return colors.size
+    }
+
+    private fun awaitNextAppFrame(timeoutMs: Long): Boolean {
+        val latch = CountDownLatch(1)
+        Handler(Looper.getMainLooper()).post {
+            Choreographer.getInstance().postFrameCallback { latch.countDown() }
+        }
+        return latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+    }
+
+    private data class SurfaceFrameCopy(val status: Int, val bitmap: Bitmap?)
+
+    private fun copyPresentedSurfaceFrame(surface: GLSurfaceView): SurfaceFrameCopy {
+        val bitmap = Bitmap.createBitmap(surface.width, surface.height, Bitmap.Config.ARGB_8888)
+        val latch = CountDownLatch(1)
+        val status = AtomicInteger(PixelCopy.ERROR_UNKNOWN)
+        val callbackThread = HandlerThread("W1-1-pixel-copy").apply { start() }
+        try {
+            PixelCopy.request(surface, bitmap, { result ->
+                status.set(result)
+                latch.countDown()
+            }, Handler(callbackThread.looper))
+            val completed = latch.await(2, TimeUnit.SECONDS)
+            val result = if (completed) status.get() else PixelCopy.ERROR_TIMEOUT
+            return if (result == PixelCopy.SUCCESS) SurfaceFrameCopy(result, bitmap)
+            else SurfaceFrameCopy(result, null).also { bitmap.recycle() }
+        } finally {
+            callbackThread.quitSafely()
+        }
+    }
 
     @Test
     fun useAppContext() {
@@ -52,6 +144,8 @@ class ExampleInstrumentedTest {
     @Test
     fun stageRosterAndGameplay_launchW1BossAndTouchControlsRespond() {
         composeRule.onNodeWithText("STAGE ROSTER", substring = true).performClick()
+        composeRule.onNodeWithTag("world_filter_tabs")
+            .performScrollToNode(hasText("W1: Carrot City", substring = true))
         composeRule.onNodeWithText("W1: Carrot City", substring = true).performClick()
         composeRule.onNodeWithTag("stage_roster_list")
             .performScrollToNode(hasText("W1-BOSS", substring = true))
@@ -63,7 +157,10 @@ class ExampleInstrumentedTest {
         composeRule.mainClock.autoAdvance = false
         composeRule.mainClock.advanceTimeBy(200)
 
-        composeRule.onNodeWithText("W1-BOSS", substring = true).assertIsDisplayed()
+        // The stage code appears in both the title chip and the progress line; assert each
+        // on its own tagged node so the check stays strict without matching ambiguously.
+        composeRule.onNodeWithTag("gameplay_stage_title").assertIsDisplayed().assertTextContains("W1-BOSS", substring = true)
+        composeRule.onNodeWithTag("gameplay_stage_progress").assertIsDisplayed().assertTextContains("W1-BOSS", substring = true)
         composeRule.onNodeWithText("TROLL DASH").assertIsDisplayed()
         composeRule.onNodeWithText("HOP / EARS").assertIsDisplayed()
         composeRule.onNodeWithText("BURROW").assertIsDisplayed()
@@ -80,6 +177,241 @@ class ExampleInstrumentedTest {
         composeRule.mainClock.autoAdvance = true
         composeRule.onNodeWithText("World Hub", substring = true).performClick()
         composeRule.onNodeWithText("BOBS BUNNY: CARROT CITY", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun w1One_dioramaTogglePreservesStageAndClassic2dFallback() {
+        composeRule.onNodeWithText("STAGE ROSTER", substring = true).performClick()
+        composeRule.onNodeWithTag("world_filter_tabs")
+            .performScrollToNode(hasText("W1: Carrot City", substring = true))
+        composeRule.onNodeWithText("W1: Carrot City", substring = true).performClick()
+        composeRule.onNodeWithTag("stage_roster_list")
+            .performScrollToNode(hasText("W1-1", substring = true))
+        composeRule.onNodeWithText("W1-1", substring = true).assertIsDisplayed()
+        composeRule.onAllNodesWithText("PLAY").onFirst().performClick()
+
+        // Frame progression remains controlled while the native GL surface
+        // and Compose button states are switched repeatedly.
+        composeRule.mainClock.autoAdvance = false
+        composeRule.mainClock.advanceTimeBy(250)
+        composeRule.onNodeWithText("3D").assertIsDisplayed()
+        composeRule.onNodeWithText("3D").performClick()
+        composeRule.mainClock.advanceTimeBy(80)
+        composeRule.onNodeWithText("2D").assertIsDisplayed()
+        composeRule.onNodeWithText("2D").performClick()
+        composeRule.mainClock.advanceTimeBy(80)
+        composeRule.onNodeWithText("3D").assertIsDisplayed()
+        composeRule.onNodeWithTag("gameplay_stage_title").assertIsDisplayed().assertTextContains("W1-1", substring = true)
+        composeRule.onNodeWithTag("gameplay_stage_progress").assertIsDisplayed().assertTextContains("W1-1", substring = true)
+        composeRule.mainClock.autoAdvance = true
+    }
+
+    @Test
+    fun w1One_visualCaptureWaitsForFirst3dDraw() {
+        // Only a completed GLES3 render increments this signal. Unlike
+        // Compose semantics polling, it never waits for a 60-FPS UI to idle.
+        val completedBefore = CarrotCity3DRenderer.completedFirstFrames.get()
+        composeRule.onNodeWithText("STAGE ROSTER", substring = true).performClick()
+        composeRule.onNodeWithTag("world_filter_tabs")
+            .performScrollToNode(hasText("W1: Carrot City", substring = true))
+        composeRule.onNodeWithText("W1: Carrot City", substring = true).performClick()
+        composeRule.onNodeWithTag("stage_roster_list")
+            .performScrollToNode(hasText("W1-1", substring = true))
+        // Target the intended stage, never the first generic PLAY button. A
+        // different stage launch would produce a false-negative GLES receipt.
+        composeRule.onNodeWithTag("stage_play_W1-1").performClick()
+        // Commit the destination change through one deterministic Compose frame,
+        // without Espresso waiting for the intentionally continuous 60-FPS loop.
+        // OpenGL has its own render thread and still must independently produce
+        // the first-frame receipt; advancing Compose does not fake GLES output.
+        composeRule.mainClock.autoAdvance = false
+        composeRule.mainClock.advanceTimeBy(250)
+        // Do NOT request Compose idleness after launching the continuous
+        // 60-FPS game loop: Espresso can time out on normal recompositions.
+        // The focused run may start at zero, but the subsequent full test
+        // suite can legitimately have completed earlier GLSurfaceView draws.
+        // Only an increment beyond our pre-navigation baseline proves THIS
+        // launch rendered a fresh scene; do not assert the global count is zero.
+        // The other W1-1 mode-toggle test already checks the 3D UI label.
+
+        val deadline = android.os.SystemClock.elapsedRealtime() + 45_000L
+        while (CarrotCity3DRenderer.completedFirstFrames.get() <= completedBefore &&
+            android.os.SystemClock.elapsedRealtime() < deadline) {
+            Thread.sleep(100)
+        }
+        val completedAfter = CarrotCity3DRenderer.completedFirstFrames.get()
+        val rendered3D = completedAfter > completedBefore
+        // A GLES3 draw can finish while Compose's loading overlay is waiting
+        // for its next frame. Drive the Compose clock only after the GL receipt
+        // so its callback dismisses the loader before capturing the screenshot.
+        // This never increments or manufactures a native render receipt.
+        if (rendered3D) composeRule.mainClock.advanceTimeBy(250)
+        if (rendered3D) {
+            composeRule.waitUntil(5_000L) {
+                composeRule.onAllNodesWithTag("gameplay_quip")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        // The GL thread increments its receipt immediately before posting the
+        // Compose frameReady update. Drive subsequent frames until the loading
+        // overlay is absent, so the screenshot cannot race that posted update.
+        val loadingDeadline = android.os.SystemClock.elapsedRealtime() + 5_000L
+        var loadingOverlayVisible = composeRule.onAllNodesWithTag("diorama_loading_overlay")
+            .fetchSemanticsNodes().isNotEmpty()
+        while (rendered3D && loadingOverlayVisible &&
+            android.os.SystemClock.elapsedRealtime() < loadingDeadline) {
+            composeRule.mainClock.advanceTimeBy(32)
+            Thread.sleep(20)
+            loadingOverlayVisible = composeRule.onAllNodesWithTag("diorama_loading_overlay")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // Synchronize against the actual SurfaceView buffer queue, not only
+        // the renderer callback (which runs before GLSurfaceView swaps buffers)
+        // or the Compose loader state. PixelCopy samples the presented GL surface
+        // and each retry is gated by a Choreographer frame, with a hard deadline.
+        val glSurface = findDioramaSurface(composeRule.activity.window.decorView)
+        var pixelCopyStatus = PixelCopy.ERROR_UNKNOWN
+        var pixelCopySceneColors = 0
+        var pixelCopyAttempts = 0
+        var pixelCopyDeadlineReached = false
+        var pixelCopyBitmap: Bitmap? = null
+        val pixelCopyDeadline = SystemClock.elapsedRealtime() + 5_000L
+        while (rendered3D && glSurface != null && pixelCopySceneColors < 6 &&
+            SystemClock.elapsedRealtime() < pixelCopyDeadline) {
+            awaitNextAppFrame(500)
+            val copy = copyPresentedSurfaceFrame(glSurface)
+            pixelCopyAttempts++
+            pixelCopyStatus = copy.status
+            copy.bitmap?.let { frame ->
+                val classes = sceneColorClassCount(frame)
+                if (classes > pixelCopySceneColors) {
+                    pixelCopyBitmap?.recycle()
+                    pixelCopyBitmap = frame
+                    pixelCopySceneColors = classes
+                } else {
+                    frame.recycle()
+                }
+            }
+        }
+        pixelCopyDeadlineReached = SystemClock.elapsedRealtime() >= pixelCopyDeadline
+        // Give SurfaceFlinger a Choreographer boundary after PixelCopy confirms
+        // nonuniform world pixels before capturing the full composed screen.
+        if (pixelCopySceneColors >= 6) awaitNextAppFrame(500)
+
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val manager = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        val reportedGles = manager?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
+        val activeActivity = composeRule.activity.javaClass.simpleName
+
+        // Preserve screenshot AND capability evidence even if the 3D gate
+        // fails, so a hosted emulator limitation is not silently misdiagnosed.
+        // Capture as soon as the completed GL receipt and Compose clock have
+        // presented the scene. A fixed idle delay adds no render evidence and
+        // gave the API 35 software emulator time to surface a Quickstep ANR
+        // dialog over the already-rendered game. Keep the scene-color gate
+        // strict; only remove the unnecessary window in which system UI can
+        // cover the pixels under test.
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        val savedPrivately = bitmap?.let { image ->
+            context.openFileOutput("bobs_w1_1_visual_qa.png", android.content.Context.MODE_PRIVATE).use {
+                image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+        } ?: false
+        // Retain the exact bitmap used by the color assertions. The separate
+        // shell screencap can happen after instrumentation teardown and must not
+        // be substituted for the evidence that this test actually inspected.
+        val savedForArtifact = if (bitmap != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, "bobs_w1_1_visual_qa.png")
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            val wrote = uri?.let { target ->
+                context.contentResolver.openOutputStream(target, "w")?.use { stream ->
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+                } ?: false
+            } ?: false
+            if (uri != null) {
+                if (wrote) {
+                    context.contentResolver.update(uri, ContentValues().apply {
+                        put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    }, null, null)
+                } else {
+                    context.contentResolver.delete(uri, null, null)
+                }
+            }
+            wrote
+        } else false
+        val saved = savedPrivately && savedForArtifact
+        val colors = mutableSetOf<Int>()
+        val sceneColors = mutableSetOf<Int>()
+        if (bitmap != null) {
+            for (gy in 1..10) {
+                for (gx in 1..16) {
+                    val color = bitmap.getPixel(gx * (bitmap.width - 1) / 17, gy * (bitmap.height - 1) / 11)
+                    colors.add(color and 0x00F0F0F0)
+                    // Isolate the central scene so colorful HUD elements do not
+                    // falsely certify a loading screen or blank 3D viewport.
+                    val sx = ((0.20f + 0.60f * gx / 17f) * (bitmap.width - 1)).toInt()
+                    val sy = ((0.35f + 0.37f * gy / 11f) * (bitmap.height - 1)).toInt()
+                    sceneColors.add(bitmap.getPixel(sx, sy) and 0x00F0F0F0)
+                }
+            }
+            bitmap.recycle()
+        }
+        pixelCopyBitmap?.recycle()
+        val diagnostics = "sdk=" + android.os.Build.VERSION.SDK_INT +
+            "\nreportedGles=0x" + reportedGles.toString(16) +
+            "\nfirstFrameBefore=" + completedBefore +
+            "\nfirstFrameAfter=" + completedAfter +
+            "\n3dCompleted=" + rendered3D +
+            "\nloadingOverlayVisible=" + loadingOverlayVisible +
+            "\npixelCopySurfaceFound=" + (glSurface != null) +
+            "\npixelCopyStatus=" + pixelCopyStatus +
+            "\npixelCopyAttempts=" + pixelCopyAttempts +
+            "\npixelCopyDeadlineReached=" + pixelCopyDeadlineReached +
+            "\npixelCopySceneColorClasses=" + pixelCopySceneColors +
+            "\nscreenshotSaved=" + saved +
+            "\nsampledColorClasses=" + colors.size +
+            "\nsceneColorClasses=" + sceneColors.size + "\n"
+        context.openFileOutput("bobs_w1_1_render_qa.txt", android.content.Context.MODE_PRIVATE)
+            .bufferedWriter().use { it.write(diagnostics) }
+        android.util.Log.i("BobsBunnyDiorama", "W1-1 hosted QA: " +
+            diagnostics.replace("\n", " | "))
+
+        // Compare against each real 58dp hit target, not the full-width layout
+        // row that positions the controls along the bottom edge.
+        if (rendered3D) {
+            assertTrue("W1-1 dialogue card did not appear for geometry QA", 
+                composeRule.onAllNodesWithTag("gameplay_quip").fetchSemanticsNodes().isNotEmpty())
+            assertHudElementsDoNotOverlap("gameplay_quip", "gameplay_stage_progress")
+            assertHudElementsDoNotOverlap("gameplay_title_panel", "gameplay_scoreboard")
+            assertHudElementsDoNotOverlap("gameplay_scoreboard", "gameplay_header_actions")
+            composeRule.onNodeWithTag("gameplay_pause").assertIsDisplayed()
+            assertNodeWithinViewport("gameplay_pause")
+            listOf(
+                "gameplay_control_left",
+                "gameplay_control_burrow",
+                "gameplay_control_right",
+                "gameplay_control_drone",
+                "gameplay_control_special",
+                "gameplay_control_jump"
+            ).forEach { controlTag ->
+                assertHudElementsDoNotOverlap("gameplay_quip", controlTag)
+            }
+        }
+
+        assertTrue("GLES3 did not complete first W1-1 frame: " + diagnostics, rendered3D)
+        assertTrue("W1-1 3D screenshot unavailable: " + diagnostics, saved)
+        assertTrue("W1-1 screenshot appears nearly uniform: " + diagnostics, colors.size >= 8)
+        assertTrue("W1-1 Compose loading overlay remained visible: " + diagnostics, !loadingOverlayVisible)
+        assertTrue("W1-1 SurfaceView did not present a diverse 3D scene: " + diagnostics,
+            glSurface != null && pixelCopySceneColors >= 6)
+        assertTrue("W1-1 playfield still blank or obscured by its loader: " + diagnostics,
+            sceneColors.size >= 6)
     }
 
     @Test

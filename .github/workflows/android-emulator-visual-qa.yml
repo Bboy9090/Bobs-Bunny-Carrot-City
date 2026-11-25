@@ -1,0 +1,81 @@
+name: Android Emulator 3D Visual QA
+
+on:
+  push:
+    branches: ['feat/bobs-bunny-3d-diorama']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bobs-bunny-emulator-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  emulator-visual-qa:
+    name: API 35 W1-1 3D Emulator QA (${{ matrix.viewport }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        viewport: [1280x720, 960x540]
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Prepare Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Run Android instrumentation and capture actual W1-1 GLES3 frame
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          BOBS_BUNNY_QA_VIEWPORT: ${{ matrix.viewport }}
+        with:
+          api-level: 35
+          # Standard AOSP image has a complete GLES3 surface stack without
+          # the Google Pixel Launcher ANR seen on google_apis; API35 aosp_atd
+          # advertised GLES3 but never produced a frame (1-color capture).
+          target: default
+          arch: x86_64
+          profile: pixel_6
+          cores: 4
+          ram-size: 3072M
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: ./scripts/ci-run-emulator-qa.sh
+
+      - name: Upload emulator screenshot and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bobs-bunny-${{ matrix.viewport }}-w1-1-android-emulator-qa
+          path: reports/android-emulator/
+          if-no-files-found: warn
+
+      - name: Upload Android instrumentation JUnit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bobs-bunny-${{ matrix.viewport }}-api35-instrumentation
+          path: |
+            app/build/outputs/androidTest-results/connected/
+            app/build/reports/androidTests/connected/
+          if-no-files-found: warn
