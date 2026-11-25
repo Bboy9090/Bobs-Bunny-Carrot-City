@@ -74,6 +74,7 @@ import com.example.myapplication.audio.CartoonSoundEngine
 import com.example.myapplication.data.PlayerProfileState
 import com.example.myapplication.game.CartoonStageEngine
 import com.example.myapplication.game.FixedStepGameClock
+import com.example.myapplication.game.hasHeldBinding
 import com.example.myapplication.model.GameCatalog
 import com.example.myapplication.ui.game3d.Cartoon3DDioramaView
 import com.example.myapplication.ui.game3d.DioramaFrameBridge
@@ -255,19 +256,19 @@ fun GamePlayScreen(
                     false
                 } else when (event.key) {
                     Key.DirectionLeft, Key.A -> {
-                        engine.inputLeft = heldKeys.any { it == Key.DirectionLeft || it == Key.A }
+                        engine.inputLeft = hasHeldBinding(heldKeys, Key.DirectionLeft, Key.A)
                         true
                     }
                     Key.DirectionRight, Key.D -> {
-                        engine.inputRight = heldKeys.any { it == Key.DirectionRight || it == Key.D }
+                        engine.inputRight = hasHeldBinding(heldKeys, Key.DirectionRight, Key.D)
                         true
                     }
                     Key.DirectionDown, Key.S, Key.ButtonR2 -> {
-                        engine.inputBurrowHeld = heldKeys.any { it == Key.DirectionDown || it == Key.S || it == Key.ButtonR2 }
+                        engine.inputBurrowHeld = hasHeldBinding(heldKeys, Key.DirectionDown, Key.S, Key.ButtonR2)
                         true
                     }
                     Key.Spacebar, Key.DirectionUp, Key.W, Key.ButtonA -> {
-                        engine.inputJumpHeld = heldKeys.any { it == Key.Spacebar || it == Key.DirectionUp || it == Key.W || it == Key.ButtonA }
+                        engine.inputJumpHeld = hasHeldBinding(heldKeys, Key.Spacebar, Key.DirectionUp, Key.W, Key.ButtonA)
                         if (firstPress) {
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             engine.triggerJump()
