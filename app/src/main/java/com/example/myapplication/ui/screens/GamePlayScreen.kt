@@ -244,7 +244,8 @@ fun GamePlayScreen(
             .onKeyEvent { event ->
                 val isDown = event.type == KeyEventType.KeyDown
                 // An OS/gamepad autorepeat is not a second jump, dash or drone
-                // toggle. Directional holds remain continuous until key-up.
+                // toggle. Recompute each held action from all equivalent keys so
+                // releasing A while Left remains down cannot cancel movement.
                 val firstPress = if (isDown) heldKeys.add(event.key) else {
                     heldKeys.remove(event.key)
                     false
@@ -254,19 +255,19 @@ fun GamePlayScreen(
                     false
                 } else when (event.key) {
                     Key.DirectionLeft, Key.A -> {
-                        engine.inputLeft = isDown
+                        engine.inputLeft = heldKeys.any { it == Key.DirectionLeft || it == Key.A }
                         true
                     }
                     Key.DirectionRight, Key.D -> {
-                        engine.inputRight = isDown
+                        engine.inputRight = heldKeys.any { it == Key.DirectionRight || it == Key.D }
                         true
                     }
                     Key.DirectionDown, Key.S, Key.ButtonR2 -> {
-                        engine.inputBurrowHeld = isDown
+                        engine.inputBurrowHeld = heldKeys.any { it == Key.DirectionDown || it == Key.S || it == Key.ButtonR2 }
                         true
                     }
                     Key.Spacebar, Key.DirectionUp, Key.W, Key.ButtonA -> {
-                        engine.inputJumpHeld = isDown
+                        engine.inputJumpHeld = heldKeys.any { it == Key.Spacebar || it == Key.DirectionUp || it == Key.W || it == Key.ButtonA }
                         if (firstPress) {
                             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             engine.triggerJump()
