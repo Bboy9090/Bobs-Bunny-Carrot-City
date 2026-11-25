@@ -196,6 +196,10 @@ fun GamePlayScreen(
                         if (isDown) engine.toggleSidekickDrone()
                         true
                     }
+                    Key.F -> {
+                        if (isDown) engine.triggerCarrotCrownFinale()
+                        true
+                    }
                     else -> false
                 }
             }
@@ -283,6 +287,28 @@ fun GamePlayScreen(
                         fontWeight = FontWeight.Black,
                         fontSize = 14.sp
                     )
+                    Text(
+                        text = "${engine.styleRankCode} • ${engine.styleScore} PTS",
+                        color = Color(0xFFE040FB),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 13.sp
+                    )
+                    if (engine.carrotFinaleReady) {
+                        Button(
+                            onClick = { engine.triggerCarrotCrownFinale() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700)),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(1.5.dp, Color.White, RoundedCornerShape(10.dp))
+                        ) {
+                            Text(
+                                text = "👑 24K FINALE",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

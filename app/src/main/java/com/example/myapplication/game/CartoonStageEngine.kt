@@ -92,6 +92,15 @@ class CartoonStageEngine(
     var activePowerUp by mutableStateOf<PowerUpType?>(null)
     var powerUpRemainingSeconds by mutableFloatStateOf(0f)
 
+    // NextWave 13.0 Carrot-Style Combo Engine & HUD state
+    val styleComboEngine = CarrotStyleComboEngine()
+    var styleRankCode by mutableStateOf("D")
+    var styleRankTitle by mutableStateOf("Warmup Hop")
+    var styleScore by mutableIntStateOf(0)
+    var styleStreak by mutableIntStateOf(0)
+    var lastLegendMoveLabel by mutableStateOf("")
+    var carrotFinaleReady by mutableStateOf(false)
+
     // Fourth-wall quip bubble
     var bobsQuip by mutableStateOf(
         when (selectedHero) {
@@ -167,6 +176,7 @@ class CartoonStageEngine(
             soundEngine.playBoing()
             spawnBurstOutAttack()
             spawnFloatingText("BURROW POP! 💥", playerX, playerY - 70f, Color(0xFFFFD600))
+            performStyleMove(CarrotLegendMove.TURBO_BURROW_POP)
             return
         }
 
@@ -193,8 +203,10 @@ class CartoonStageEngine(
             if (wasCoyoteRescue) {
                 addSwag(0.18f, "LOONEY SAVE! 👀", Color(0xFF00E5FF))
                 setQuip("Whew! Almost looked down there, folks!")
+                performStyleMove(CarrotLegendMove.EAR_COPTER_SPIN)
             } else if (jumpCount >= 2) {
                 addSwag(0.06f, "AIR HOP x$jumpCount!", Color(0xFFFFEA00))
+                performStyleMove(CarrotLegendMove.EAR_COPTER_SPIN)
             }
             spawnDustParticles(playerX, playerY, 6, trailColor)
         }
@@ -286,8 +298,10 @@ class CartoonStageEngine(
                     triggerScreenShake(0.24f, 8f)
                     addSwag(0.25f, "TROLL COUNTER! 🎭", Color(0xFFFF4081))
                     setQuip("Hold this anvil for me, Foxy! 🔨")
+                    performStyleMove(CarrotLegendMove.QUAKE_CARROT_SLAM)
                 } else {
                     addSwag(0.08f, "SWAG DASH! ✨", Color(0xFF00E5FF))
+                    performStyleMove(CarrotLegendMove.TURBO_BURROW_POP)
                 }
                 spawnDustParticles(playerX, playerY - 30f, 10, Color(0xFFFFD700))
             }
@@ -439,6 +453,8 @@ class CartoonStageEngine(
         }
         swagMultiplier = baseSwagMult + weatherMutator.carrotMultiplierBonus
         swagMeter = (swagMeter - dt * 0.024f).coerceIn(0f, 1f)
+        styleComboEngine.decay(dt)
+        syncStyleHudState()
 
         val moveDir = when {
             inputRight && !inputLeft -> 1f
@@ -557,6 +573,7 @@ class CartoonStageEngine(
                     if (!isRailGrinding) {
                         isRailGrinding = true
                         addSwag(0.14f, "CABLE RAIL GRIND! 🚋✨", Color(0xFFFFD740))
+                        performStyleMove(CarrotLegendMove.CARROT_RAIL_GRIND)
                     }
                     if (frameTick % 4 == 0) {
                         spawnDustParticles(playerX, playerY, 3, Color(0xFFFFEA00))
@@ -961,11 +978,50 @@ class CartoonStageEngine(
                 prevY <= plat.y + 28f
         }
 
+    private fun syncStyleHudState() {
+        styleRankCode = styleComboEngine.rank.code
+        styleRankTitle = styleComboEngine.rank.title
+        styleScore = styleComboEngine.score
+        styleStreak = styleComboEngine.streak
+        carrotFinaleReady = styleComboEngine.canTriggerFinale(swagMeter)
+    }
+
+    fun performStyleMove(move: CarrotLegendMove): StyleMoveResult {
+        val res = styleComboEngine.recordMove(move, swagMeter)
+        if (res.accepted) {
+            collectedCarrots += res.bonusCarrots
+            swagMeter = (swagMeter + 0.05f).coerceIn(0f, 1f)
+            lastLegendMoveLabel = move.displayName
+            spawnFloatingText(
+                "${move.displayName} • ${res.rank.code} (+${res.pointsEarned} PTS)",
+                playerX,
+                playerY - 102f,
+                Color(0xFFFFD700)
+            )
+        }
+        syncStyleHudState()
+        return res
+    }
+
+    fun triggerCarrotCrownFinale(): Boolean {
+        val res = performStyleMove(CarrotLegendMove.CARROT_CROWN_FINALE)
+        if (!res.accepted) return false
+        triggerScreenShake(0.32f, 14f)
+        invulnerableTimer = maxOf(invulnerableTimer, 1.5f)
+        soundEngine.playVictoryFanfare()
+        flattenNearbyEnemies(260f)
+        spawnDustParticles(playerX, playerY - 30f, 20, Color(0xFFFFD700))
+        spawnFloatingText("👑 24K CARROT FINALE! +15 🥕", playerX, playerY - 126f, Color(0xFFFFD700))
+        syncStyleHudState()
+        return true
+    }
+
     private fun addSwag(amount: Float, popupText: String?, color: Color) {
         swagMeter = (swagMeter + amount).coerceIn(0f, 1f)
         if (popupText != null) {
             spawnFloatingText(popupText, playerX, playerY - 75f, color)
         }
+        syncStyleHudState()
     }
 
     private fun setQuip(text: String) {
