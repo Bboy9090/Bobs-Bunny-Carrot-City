@@ -16,3 +16,6 @@ local.properties
 
 .kotlin/
 .idea/
+apple-port/*.xcodeproj/xcuserdata/
+apple-port/*.xcodeproj/project.xcworkspace/
+apple-port/build/

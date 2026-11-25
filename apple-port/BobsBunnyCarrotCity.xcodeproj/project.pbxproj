@@ -1,0 +1,385 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1C4B2E402BB41EC7E7B2B3F7 /* BobsBunnyCarrotCityAppleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A737E0441E1BF8EFECC8673 /* BobsBunnyCarrotCityAppleApp.swift */; };
+		3B88A14A7DA40E9F56D3C6AD /* CarrotStyleComboEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993B9AF489540C2C33E12D4C /* CarrotStyleComboEngine.swift */; };
+		5D898E7B0862934877CE88F7 /* CarrotStyleComboEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993B9AF489540C2C33E12D4C /* CarrotStyleComboEngine.swift */; };
+		75529B81D8C6B6DAD58A044C /* BobsBunnyCarrotCityAppleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A737E0441E1BF8EFECC8673 /* BobsBunnyCarrotCityAppleApp.swift */; };
+		E34CEE588E8BD53BC29409C3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 340856B45C1498822CBADA5C /* PrivacyInfo.xcprivacy */; };
+		EEB84F981622ED9B5263C2CD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 340856B45C1498822CBADA5C /* PrivacyInfo.xcprivacy */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2A737E0441E1BF8EFECC8673 /* BobsBunnyCarrotCityAppleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BobsBunnyCarrotCityAppleApp.swift; sourceTree = "<group>"; };
+		340856B45C1498822CBADA5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		419F5B3F30B91677CFF7D002 /* BobsBunnyCarrotCity_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BobsBunnyCarrotCity_iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		649E876D05BE25E9F81AB069 /* BobsBunnyCarrotCity_macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BobsBunnyCarrotCity_macOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		993B9AF489540C2C33E12D4C /* CarrotStyleComboEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarrotStyleComboEngine.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		8C6321C1D709CA403D8D3088 = {
+			isa = PBXGroup;
+			children = (
+				2A737E0441E1BF8EFECC8673 /* BobsBunnyCarrotCityAppleApp.swift */,
+				993B9AF489540C2C33E12D4C /* CarrotStyleComboEngine.swift */,
+				340856B45C1498822CBADA5C /* PrivacyInfo.xcprivacy */,
+				D1EDBEFFD2417B8DDF6F9569 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D1EDBEFFD2417B8DDF6F9569 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				419F5B3F30B91677CFF7D002 /* BobsBunnyCarrotCity_iOS.app */,
+				649E876D05BE25E9F81AB069 /* BobsBunnyCarrotCity_macOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		29A9AD87F5CC4CCDCFE3C0A9 /* BobsBunnyCarrotCity_macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6A3048AFF9DB56D134A4E37C /* Build configuration list for PBXNativeTarget "BobsBunnyCarrotCity_macOS" */;
+			buildPhases = (
+				2CD28B83EFD9591A6642D96B /* Sources */,
+				7D5396F4933AF5606B0F08C7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BobsBunnyCarrotCity_macOS;
+			packageProductDependencies = (
+			);
+			productName = BobsBunnyCarrotCity_macOS;
+			productReference = 649E876D05BE25E9F81AB069 /* BobsBunnyCarrotCity_macOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4B3BF44310E4F0C9A61CB499 /* BobsBunnyCarrotCity_iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 57905F7EB14E417A3D7DAB59 /* Build configuration list for PBXNativeTarget "BobsBunnyCarrotCity_iOS" */;
+			buildPhases = (
+				C09B7565F428F1EB31C9D619 /* Sources */,
+				C872DEC5B426463D0B98E24E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BobsBunnyCarrotCity_iOS;
+			packageProductDependencies = (
+			);
+			productName = BobsBunnyCarrotCity_iOS;
+			productReference = 419F5B3F30B91677CFF7D002 /* BobsBunnyCarrotCity_iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		ED990E0CAC46FA53FF36C57C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = AE954510C26D36C4A805BEA0 /* Build configuration list for PBXProject "BobsBunnyCarrotCity" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 8C6321C1D709CA403D8D3088;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D1EDBEFFD2417B8DDF6F9569 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4B3BF44310E4F0C9A61CB499 /* BobsBunnyCarrotCity_iOS */,
+				29A9AD87F5CC4CCDCFE3C0A9 /* BobsBunnyCarrotCity_macOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7D5396F4933AF5606B0F08C7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EEB84F981622ED9B5263C2CD /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C872DEC5B426463D0B98E24E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E34CEE588E8BD53BC29409C3 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2CD28B83EFD9591A6642D96B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				75529B81D8C6B6DAD58A044C /* BobsBunnyCarrotCityAppleApp.swift in Sources */,
+				3B88A14A7DA40E9F56D3C6AD /* CarrotStyleComboEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C09B7565F428F1EB31C9D619 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C4B2E402BB41EC7E7B2B3F7 /* BobsBunnyCarrotCityAppleApp.swift in Sources */,
+				5D898E7B0862934877CE88F7 /* CarrotStyleComboEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		33362AE0342D8E67F29325C0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = BobsBunnyCarrotCity.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Info-macOS.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bluephoenixstudios.bobsbunnycarrotcity;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		3617BC11F539B95BA74BD5C6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bluephoenixstudios.bobsbunnycarrotcity;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7AA8705D70B231DFA9BA6BFB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bluephoenixstudios.bobsbunnycarrotcity;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		864A81544B82A80C7AD7FD90 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = BobsBunnyCarrotCity.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Info-macOS.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bluephoenixstudios.bobsbunnycarrotcity;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B055AD0B8BCC32A5A5855B23 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		EDE1B9F30AAE1DC635B6B823 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		57905F7EB14E417A3D7DAB59 /* Build configuration list for PBXNativeTarget "BobsBunnyCarrotCity_iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3617BC11F539B95BA74BD5C6 /* Debug */,
+				7AA8705D70B231DFA9BA6BFB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6A3048AFF9DB56D134A4E37C /* Build configuration list for PBXNativeTarget "BobsBunnyCarrotCity_macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				33362AE0342D8E67F29325C0 /* Debug */,
+				864A81544B82A80C7AD7FD90 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AE954510C26D36C4A805BEA0 /* Build configuration list for PBXProject "BobsBunnyCarrotCity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EDE1B9F30AAE1DC635B6B823 /* Debug */,
+				B055AD0B8BCC32A5A5855B23 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = ED990E0CAC46FA53FF36C57C /* Project object */;
+}

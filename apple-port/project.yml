@@ -1,0 +1,38 @@
+name: BobsBunnyCarrotCity
+options:
+  bundleIdPrefix: com.bluephoenixstudios
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "13.0"
+targets:
+  BobsBunnyCarrotCity_iOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: CarrotStyleComboEngine.swift
+      - path: BobsBunnyCarrotCityAppleApp.swift
+      - path: PrivacyInfo.xcprivacy
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bluephoenixstudios.bobsbunnycarrotcity
+        INFOPLIST_FILE: Info.plist
+        SWIFT_VERSION: "5.0"
+        CODE_SIGNING_ALLOWED: "NO"
+        GENERATE_INFOPLIST_FILE: "NO"
+  BobsBunnyCarrotCity_macOS:
+    type: application
+    platform: macOS
+    sources:
+      - path: CarrotStyleComboEngine.swift
+      - path: BobsBunnyCarrotCityAppleApp.swift
+      - path: PrivacyInfo.xcprivacy
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bluephoenixstudios.bobsbunnycarrotcity
+        INFOPLIST_FILE: Info-macOS.plist
+        CODE_SIGN_ENTITLEMENTS: BobsBunnyCarrotCity.entitlements
+        SWIFT_VERSION: "5.0"
+        CODE_SIGNING_ALLOWED: "NO"
+        GENERATE_INFOPLIST_FILE: "NO"
