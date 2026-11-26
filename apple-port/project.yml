@@ -28,6 +28,8 @@ targets:
       - path: BobsBunnyCarrotCityAppleApp.swift
       - path: PrivacyInfo.xcprivacy
         buildPhase: resources
+      - path: AppIcon.icns
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bluephoenixstudios.bobsbunnycarrotcity

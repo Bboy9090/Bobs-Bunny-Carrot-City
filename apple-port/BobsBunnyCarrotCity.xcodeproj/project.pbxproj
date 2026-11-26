@@ -11,6 +11,7 @@
 		3B88A14A7DA40E9F56D3C6AD /* CarrotStyleComboEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993B9AF489540C2C33E12D4C /* CarrotStyleComboEngine.swift */; };
 		5D898E7B0862934877CE88F7 /* CarrotStyleComboEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993B9AF489540C2C33E12D4C /* CarrotStyleComboEngine.swift */; };
 		75529B81D8C6B6DAD58A044C /* BobsBunnyCarrotCityAppleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A737E0441E1BF8EFECC8673 /* BobsBunnyCarrotCityAppleApp.swift */; };
+		977BB168F462FE2C7F386608 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 37D21507E446D3235A33E9E8 /* AppIcon.icns */; };
 		E34CEE588E8BD53BC29409C3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 340856B45C1498822CBADA5C /* PrivacyInfo.xcprivacy */; };
 		EEB84F981622ED9B5263C2CD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 340856B45C1498822CBADA5C /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
@@ -18,6 +19,7 @@
 /* Begin PBXFileReference section */
 		2A737E0441E1BF8EFECC8673 /* BobsBunnyCarrotCityAppleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BobsBunnyCarrotCityAppleApp.swift; sourceTree = "<group>"; };
 		340856B45C1498822CBADA5C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		37D21507E446D3235A33E9E8 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		419F5B3F30B91677CFF7D002 /* BobsBunnyCarrotCity_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BobsBunnyCarrotCity_iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		649E876D05BE25E9F81AB069 /* BobsBunnyCarrotCity_macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BobsBunnyCarrotCity_macOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		993B9AF489540C2C33E12D4C /* CarrotStyleComboEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarrotStyleComboEngine.swift; sourceTree = "<group>"; };
@@ -27,6 +29,7 @@
 		8C6321C1D709CA403D8D3088 = {
 			isa = PBXGroup;
 			children = (
+				37D21507E446D3235A33E9E8 /* AppIcon.icns */,
 				2A737E0441E1BF8EFECC8673 /* BobsBunnyCarrotCityAppleApp.swift */,
 				993B9AF489540C2C33E12D4C /* CarrotStyleComboEngine.swift */,
 				340856B45C1498822CBADA5C /* PrivacyInfo.xcprivacy */,
@@ -118,6 +121,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				977BB168F462FE2C7F386608 /* AppIcon.icns in Resources */,
 				EEB84F981622ED9B5263C2CD /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

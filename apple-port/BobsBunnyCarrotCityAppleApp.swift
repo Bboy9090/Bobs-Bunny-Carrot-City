@@ -1,4 +1,17 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
+
+private enum CarrotSoundFX {
+    static func play(muted: Bool, isFinale: Bool = false) {
+        guard !muted else { return }
+        #if os(macOS)
+        let soundName = NSSound.Name(isFinale ? "Glass" : "Pop")
+        NSSound(named: soundName)?.play()
+        #endif
+    }
+}
 
 @main
 struct BobsBunnyCarrotCityAppleApp: App {
@@ -14,6 +27,7 @@ struct BobsBunnyAppleRootView: View {
     @AppStorage("bb_carrots_v1") private var totalCarrots: Int = 95
     @AppStorage("bb_shards_v1") private var totalShards: Int = 3
     @AppStorage("bb_peak_rank_v1") private var savedPeakRank: String = "D"
+    @AppStorage("bb_sfx_muted_v1") private var sfxMuted: Bool = false
 
     @State private var selectedHero: PlayableHero = .bobsBunny
     @State private var selectedStage: CarrotStageDescriptor = CarrotCityCatalog.stages[0]
@@ -71,6 +85,20 @@ struct BobsBunnyAppleRootView: View {
                     badgePill("🌟 \(totalShards)", tint: .yellow)
                     badgePill("\(styleRankCodeDisplay) • \(styleScoreDisplay) PTS", tint: .purple)
                     badgePill("Peak \(savedPeakRank)", tint: .mint)
+                    Button {
+                        sfxMuted.toggle()
+                        lastActionBanner = sfxMuted ? "Sound FX muted (M)." : "Sound FX enabled (M)."
+                        CarrotSoundFX.play(muted: sfxMuted)
+                    } label: {
+                        Text(sfxMuted ? "🔇 SFX OFF (M)" : "🔊 SFX ON (M)")
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background((sfxMuted ? Color.gray : Color.cyan).opacity(0.24), in: Capsule())
+                            .foregroundStyle(sfxMuted ? .white.opacity(0.75) : .cyan)
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut("m", modifiers: [])
+                    .accessibilityLabel("Toggle sound effects mute")
                 }
             }
             Text(lastActionBanner)
@@ -126,6 +154,17 @@ struct BobsBunnyAppleRootView: View {
                     .foregroundStyle(.white.opacity(0.9))
                 ProgressView(value: swagMeter)
                     .tint(finaleReady ? .yellow : .cyan)
+                Button("Hop Boost (Space)") {
+                    swagMeter = min(1.0, swagMeter + 0.12)
+                    stageProgress = min(0.86, stageProgress + 0.06)
+                    runnerBobPhase += 1.2
+                    CarrotSoundFX.play(muted: sfxMuted)
+                    syncState("Turbo hop boost engaged! Swag \(Int(swagMeter * 100))%.")
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.space, modifiers: [])
+                .accessibilityLabel("Hop boost forward")
+
                 Button("Reset Run") {
                     styleEngine.reset()
                     swagMeter = 0.55
@@ -210,6 +249,7 @@ struct BobsBunnyAppleRootView: View {
         let isFinale = move == .carrotCrownFinale
         let res = styleEngine.recordMove(move, swagMeter: swagMeter)
         if res.accepted {
+            CarrotSoundFX.play(muted: sfxMuted, isFinale: isFinale)
             totalCarrots += res.bonusCarrots
             if isFinale { totalShards += 1 }
             swagMeter = min(1.0, swagMeter + 0.10)
@@ -225,18 +265,29 @@ struct BobsBunnyAppleRootView: View {
         }
     }
 
+    private func moveShortcutKey(_ move: CarrotLegendMove) -> KeyEquivalent {
+        switch move {
+        case .earCopterSpin: return "1"
+        case .turboBurrowPop: return "2"
+        case .carrotRailGrind: return "3"
+        case .quakeCarrotSlam: return "4"
+        case .carrotCrownFinale: return "5"
+        }
+    }
+
     private func legendStyleButton(for move: CarrotLegendMove) -> some View {
         let isFinale = move == .carrotCrownFinale
         let bgColor: Color = isFinale
             ? (finaleReady ? Color.yellow : Color.gray.opacity(0.35))
             : Color.purple.opacity(0.35)
         let fgColor: Color = (isFinale && finaleReady) ? .black : .white
+        let idxLabel = moveShortcutKey(move).character
 
         return Button {
             handleStyleMove(move)
         } label: {
             VStack(spacing: 3) {
-                Text(move.displayName)
+                Text("\(move.displayName) [\(String(idxLabel))]")
                     .font(.system(size: 11, weight: .bold))
                 Text("+\(move.bonusCarrots) 🥕")
                     .font(.system(size: 9.5, design: .monospaced))
@@ -247,6 +298,7 @@ struct BobsBunnyAppleRootView: View {
             .foregroundStyle(fgColor)
         }
         .buttonStyle(.plain)
+        .keyboardShortcut(moveShortcutKey(move), modifiers: [])
         .disabled(isFinale && !finaleReady)
         .accessibilityLabel("Trigger \(move.displayName)")
     }
