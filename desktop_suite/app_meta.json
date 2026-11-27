@@ -1,0 +1,18 @@
+{
+  "title": "Bob's Bunny: Carrot City",
+  "slug": "bobs-bunny-carrot-city",
+  "exe_name": "BobsBunnyCarrotCity",
+  "version": "1.0.0",
+  "width": 1360,
+  "height": 840,
+  "theme": {
+    "bg": "#0B1B36",
+    "surface": "#12284F",
+    "surface2": "#1B3B73",
+    "primary": "#FF9E1B",
+    "accent": "#22D3EE",
+    "secondary": "#FACC15",
+    "text": "#F8FAFC",
+    "muted": "#B6D0F2"
+  }
+}
