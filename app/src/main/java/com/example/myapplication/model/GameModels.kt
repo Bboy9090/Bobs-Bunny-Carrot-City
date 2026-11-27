@@ -19,9 +19,9 @@ enum class PlayableHero(
         displayName = "Bobs Bunny",
         title = "The Smooth Street Legend",
         specialMoveLabel = "TROLL DASH",
-        description = "Balanced speed, Helicopter Ears glide & fourth-wall Troll Counters.",
-        bodyColor = Color(0xFFF5F5F5),
-        earOrHelmetColor = Color(0xFFFF80AB),
+        description = "Athletic Carrot City hero with aviator goggles, yellow scarf, Helicopter Ears & fourth-wall Troll Counters.",
+        bodyColor = Color(0xFFF4D58D),
+        earOrHelmetColor = Color(0xFFFFD600),
         accentColor = Color(0xFFFF6D00),
         speedFactor = 1.0f,
         jumpFactor = 1.0f
@@ -897,12 +897,12 @@ object GameCatalog {
         // Headgear
         SwagItem(
             id = "head_classic_shades",
-            name = "OG Carrot City Shades",
+            name = "Aviator Cap & Yellow Goggles",
             category = SwagCategory.HEADGEAR,
             costCarrots = 0,
-            primaryColor = Color(0xFF111111),
-            secondaryColor = Color(0xFF00E5FF),
-            description = "Bobs's signature dark frames. Effortlessly cool."
+            primaryColor = Color(0xFF5D4037),
+            secondaryColor = Color(0xFFFFD600),
+            description = "Bob's signature leather aviator cap with yellow goggles."
         ),
         SwagItem(
             id = "head_snapback_red",
@@ -934,12 +934,12 @@ object GameCatalog {
         // Hoodies
         SwagItem(
             id = "hoodie_orange_drip",
-            name = "Carrot Juice Hoodie",
+            name = "Orange & White Outerwear",
             category = SwagCategory.HOODIE,
             costCarrots = 0,
             primaryColor = Color(0xFFFF6D00),
-            secondaryColor = Color(0xFFFFFFFF),
-            description = "Fresh oversized streetwear hoodie in bright carrot orange."
+            secondaryColor = Color(0xFFFFFBF2),
+            description = "Sleek athletic orange-and-white jacket paired with Bob's yellow scarf."
         ),
         SwagItem(
             id = "hoodie_neon_cyber",
@@ -971,12 +971,12 @@ object GameCatalog {
         // Kicks
         SwagItem(
             id = "kicks_high_tops",
-            name = "Air Hop High-Tops",
+            name = "White & Yellow Dash Kicks",
             category = SwagCategory.KICKS,
             costCarrots = 0,
-            primaryColor = Color(0xFFFF1744),
-            secondaryColor = Color(0xFFFFFFFF),
-            description = "Classic red-and-white high-tops built for rooftop hops."
+            primaryColor = Color(0xFFFFFFFF),
+            secondaryColor = Color(0xFFFFD600),
+            description = "Crisp white-and-yellow athletic sneakers built for Carrot City."
         ),
         SwagItem(
             id = "kicks_emerald_springs",

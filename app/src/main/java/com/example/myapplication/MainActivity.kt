@@ -2,6 +2,7 @@ package com.example.myapplication
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -65,6 +66,10 @@ private fun BobsBunnyCarrotCityApp(repository: GameProgressRepository) {
 
     DisposableEffect(Unit) {
         onDispose { soundEngine.release() }
+    }
+
+    BackHandler(enabled = destination !is AppDestination.Hub) {
+        destination = AppDestination.Hub
     }
 
     when (val current = destination) {
