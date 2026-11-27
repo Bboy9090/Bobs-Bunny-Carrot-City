@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "repository": "Bboy9090/Bobs-Bunny-Carrot-City",
+  "status": "recorded",
+  "public_name": "Bob's Bunny: Carrot City",
+  "checks": [
+    {
+      "path": "desktop_suite/app_meta.json",
+      "format": "json",
+      "key": [
+        "title"
+      ],
+      "expected": "Bob's Bunny: Carrot City",
+      "role": "public_name"
+    },
+    {
+      "path": "desktop_suite/app_meta.json",
+      "format": "json",
+      "key": [
+        "slug"
+      ],
+      "expected": "bobs-bunny-carrot-city",
+      "role": "internal_identifier"
+    },
+    {
+      "path": "desktop_suite/app_meta.json",
+      "format": "json",
+      "key": [
+        "exe_name"
+      ],
+      "expected": "BobsBunnyCarrotCity",
+      "role": "internal_identifier"
+    }
+  ],
+  "evidence": "Recorded portfolio identity and 4cd76540d7c582ffd6997a2ec750d181383ae6c6 desktop_suite/app_meta.json",
+  "release_verification": "not_performed"
+}
